@@ -1,10 +1,10 @@
-# 🧘‍♀️ Aura Posture - AI-Powered Focus & Posture Coach
+# 🧘‍♀️ Ascends - AI-Powered Focus & Posture Coach
 
 **Transform your workday with AI-powered posture monitoring and habit tracking.**
 
-## 🎯 What is Aura Posture?
+## 🎯 What is Ascends?
 
-Aura Posture is an intelligent web application that uses your webcam and AI to:
+Ascends is an intelligent web application that uses your webcam and AI to:
 - **Monitor your posture** in real-time with advanced calibration
 - **Detect face touching** to break unconscious habits
 - **Provide gentle alerts** to keep you focused and healthy

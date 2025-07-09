@@ -6,13 +6,13 @@ const PricingPage = () => {
   const [error, setError] = useState(null);
   const [processingPlan, setProcessingPlan] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState(localStorage.getItem('aura_auth_token') || '');
+  const [token, setToken] = useState(localStorage.getItem('ascends_auth_token') || '');
   const [canceled, setCanceled] = useState(false);
 
   const checkAuthStatus = useCallback(async () => {
     if (token) {
       try {
-        const response = await fetch('http://localhost:4000/api/auth/profile', {
+        const response = await fetch('/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -23,14 +23,14 @@ const PricingPage = () => {
           setIsAuthenticated(true);
         } else {
           // Token is invalid
-          localStorage.removeItem('aura_auth_token');
+          localStorage.removeItem('ascends_auth_token');
           setToken('');
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        localStorage.removeItem('aura_auth_token');
-        setToken('');
-      }
+              } catch (error) {
+          console.error('Auth check error:', error);
+          localStorage.removeItem('ascends_auth_token');
+          setToken('');
+        }
     }
   }, [token]);
 
@@ -62,7 +62,7 @@ const PricingPage = () => {
       setError(null);
 
       // Create checkout session for lifetime plan
-      const response = await fetch('http://localhost:4000/api/stripe/create-checkout-session', {
+      const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ const PricingPage = () => {
       {/* Header */}
       <div className="container mx-auto px-6 py-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Aura Posture</h1>
+          <h1 className="text-2xl font-bold">Ascends</h1>
           <button
             onClick={() => window.location.href = '/'}
             className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-colors"
@@ -267,7 +267,7 @@ const PricingPage = () => {
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6">
               <h4 className="font-bold mb-3">Is this really a one-time payment?</h4>
-              <p className="text-gray-300">Yes! Pay $10 once and own Aura Posture forever. No monthly fees, no hidden costs, and all future updates are included.</p>
+              <p className="text-gray-300">Yes! Pay $10 once and own Ascends forever. No monthly fees, no hidden costs, and all future updates are included.</p>
             </div>
           </div>
         </div>

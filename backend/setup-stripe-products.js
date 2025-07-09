@@ -8,7 +8,7 @@ async function setupStripeProducts() {
     // Create Premium Product
     console.log('📦 Creating Premium Product...');
     const premiumProduct = await stripe.products.create({
-      name: 'Aura Posture Premium',
+      name: 'Ascends Premium',
       description: 'Advanced AI-powered posture analysis with custom features',
       metadata: {
         plan: 'premium',
@@ -34,7 +34,7 @@ async function setupStripeProducts() {
     // Create Pro Product
     console.log('📦 Creating Pro Product...');
     const proProduct = await stripe.products.create({
-      name: 'Aura Posture Pro',
+      name: 'Ascends Pro',
       description: 'Complete wellness suite for professionals and teams',
       metadata: {
         plan: 'pro',

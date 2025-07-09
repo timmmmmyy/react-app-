@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, Star, ArrowRight, Settings, AlertCircle } from 'lucide-react';
+import { Crown, ArrowRight, Settings, AlertCircle } from 'lucide-react';
 import stripeService from '../services/stripeService';
 
 const SubscriptionStatus = ({ user, onUpgrade }) => {
@@ -18,12 +18,12 @@ const SubscriptionStatus = ({ user, onUpgrade }) => {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('aura_auth_token');
+      const token = localStorage.getItem('ascends_auth_token');
       if (!token) {
         throw new Error('No authentication token');
       }
 
-      const response = await fetch('http://localhost:4000/api/stripe/subscription-status', {
+      const response = await fetch('/api/stripe/subscription-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -71,7 +71,7 @@ const SubscriptionStatus = ({ user, onUpgrade }) => {
       case 'lifetime':
         return <Crown className="w-4 h-4" />;
       case 'trial':
-        return <Star className="w-4 h-4" />;
+        return <Crown className="w-4 h-4" />;
       default:
         return null;
     }

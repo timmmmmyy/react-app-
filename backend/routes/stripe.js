@@ -101,7 +101,7 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
             customerName,
             { 
               plan: planId,
-              source: 'aura_posture_checkout'
+              source: 'ascends_checkout'
             }
           );
         }
@@ -270,7 +270,8 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
 
     // Check trial status
     if (user.trial_start_time) {
-      const trialElapsed = Date.now() - user.trial_start_time;
+      const trialStartTimestamp = Number(user.trial_start_time);
+      const trialElapsed = trialStartTimestamp ? (Date.now() - trialStartTimestamp) : 0;
       const trialExpired = trialElapsed > 3600000; // 1 hour
       
       return res.json({

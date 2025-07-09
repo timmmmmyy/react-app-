@@ -176,7 +176,7 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        trial_start_time: user.trial_start_time,
+        trial_start_time: user.trial_start_time ? Number(user.trial_start_time) : null,
         has_lifetime_access: user.has_lifetime_access
       },
       token
@@ -194,9 +194,21 @@ router.post('/login', async (req, res) => {
 // Get user profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
+    // Refetch user from DB to get the latest info
+    const user = await findUserByEmail(req.user.email);
+    
+    if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+    }
+      
     res.json({
       success: true,
-      user: req.user
+      user: {
+        id: user.id,
+        email: user.email,
+        trial_start_time: user.trial_start_time ? Number(user.trial_start_time) : null,
+        has_lifetime_access: user.has_lifetime_access,
+      }
     });
   } catch (error) {
     console.error('Profile error:', error);
@@ -211,9 +223,11 @@ router.get('/profile', authenticateToken, async (req, res) => {
 router.post('/start-trial', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
+    const userEmail = req.user.email;
     
     // Check if user already started trial
-    if (req.user.trial_start_time) {
+    const freshUser = await findUserByEmail(userEmail);
+    if (freshUser.trial_start_time) {
       return res.status(400).json({
         success: false,
         error: 'Trial has already been started'
@@ -221,7 +235,7 @@ router.post('/start-trial', authenticateToken, async (req, res) => {
     }
 
     // Check if user has lifetime access
-    if (req.user.has_lifetime_access) {
+    if (freshUser.has_lifetime_access) {
       return res.status(400).json({
         success: false,
         error: 'You already have lifetime access'

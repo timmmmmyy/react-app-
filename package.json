@@ -7,7 +7,7 @@
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
-
+    "axios": "^1.10.0",
     "lucide-react": "^0.379.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -24,7 +24,6 @@
     "dev:frontend": "npm start",
     "dev:both": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "setup": "npm install && cd backend && npm install && cd ..",
-
     "stripe:listen": "stripe listen --forward-to localhost:4000/webhook"
   },
   "eslintConfig": {

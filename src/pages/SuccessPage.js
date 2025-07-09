@@ -216,7 +216,7 @@ const SuccessPage = () => {
                 onClick={() => window.location.href = '/'}
                 className="flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-lg transition-all transform hover:scale-105"
               >
-                Start Using Aura Posture
+                Start Using Ascends
                 <ArrowRight className="w-5 h-5 ml-2" />
               </button>
               
@@ -237,7 +237,7 @@ const SuccessPage = () => {
                 Need help getting started or have questions about your subscription?
               </p>
               <a
-                href="mailto:support@auraposture.com"
+                                  href="mailto:support@ascends.me"
                 className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
               >
                 Contact our support team →

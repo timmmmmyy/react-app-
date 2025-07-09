@@ -34,13 +34,13 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange, onLogin, onRegister, e
           return;
         }
         
-        if (password.length < 6) {
-          setError('Password must be at least 6 characters long');
+        if (password.length < 8) {
+          setError('Password must be at least 8 characters long');
           setIsLoading(false);
           return;
         }
         
-        await onRegister(name, email, password);
+        await onRegister(name, email, password, confirmPassword);
       }
     } catch (error) {
       setError(error.message);
@@ -110,12 +110,12 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange, onLogin, onRegister, e
             />
             <input
               type="password"
-              placeholder="Password (min. 6 characters)"
+              placeholder="Password (min. 8 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
-              minLength={6}
+              minLength={8}
             />
             {mode === 'register' && (
               <input
@@ -125,7 +125,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange, onLogin, onRegister, e
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
-                minLength={6}
+                minLength={8}
               />
             )}
           </div>
@@ -233,7 +233,7 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }) => {
             <Crown className="w-10 h-10 text-white" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-2">
-            🎉 Free Trial Complete!
+            Free Trial Complete!
           </h3>
           <p className="text-gray-300">
             Ready to unlock unlimited access?
@@ -278,7 +278,7 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }) => {
             onClick={onUpgrade}
             className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-4 rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-yellow-500/25"
           >
-            🚀 Upgrade Now - $10
+            Upgrade Now - $10
           </button>
           <button
             onClick={onClose}
@@ -289,7 +289,7 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }) => {
         </div>
 
         <p className="text-xs text-gray-500 mt-4 text-center">
-          ✨ One-time payment • No monthly fees • Lifetime access
+          One-time payment • No monthly fees • Lifetime access
         </p>
       </div>
     </div>
@@ -360,24 +360,23 @@ const FaceTouchDetector = () => {
   
   // Authentication & User Management
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('aura_auth_token') || '');
+  const [token, setToken] = useState(localStorage.getItem('ascends_auth_token') || '');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
+  const [isAuthCheckComplete, setIsAuthCheckComplete] = useState(false);
   
-  // Trial Management
-  const [trialStartTime, setTrialStartTime] = useState(
-    localStorage.getItem('aura_trial_start') ? parseInt(localStorage.getItem('aura_trial_start')) : null
-  );
-  const [trialTimeRemaining, setTrialTimeRemaining] = useState(3600000); // 1 hour in milliseconds
+  // Trial Management - initialize based on backend state
+  const [trialStartTime, setTrialStartTime] = useState(null);
+  const [trialTimeRemaining, setTrialTimeRemaining] = useState(0);
   const [isTrialActive, setIsTrialActive] = useState(false);
   const [isTrialExpired, setIsTrialExpired] = useState(false);
   const [hasLifetimePlan, setHasLifetimePlan] = useState(false);
   
   // Settings
-  const [threshold, setThreshold] = useState(80); // pixels - optimized default for reliable detection
+  const [threshold, setThreshold] = useState(50); // pixels - default distance for face touch
   const [alertInterval, setAlertInterval] = useState(5); // seconds
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -403,6 +402,11 @@ const FaceTouchDetector = () => {
   const [faceAlertSound, setFaceAlertSound] = useState('slap'); // Face touch sound
   const [postureAlertSound, setPostureAlertSound] = useState('tuntun'); // Posture sound
   const [customSoundUrl, setCustomSoundUrl] = useState('/alert.mp4'); // Set default custom sound
+
+  // Add state for UI feedback
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [detectionActive, setDetectionActive] = useState(false);
+  const [alert, setAlert] = useState({ type: '', message: '' });
 
   // Calibration state
   const [isCalibrated, setIsCalibrated] = useState(false);
@@ -490,7 +494,7 @@ const FaceTouchDetector = () => {
     const checkAuthStatus = async () => {
       if (token) {
         try {
-          const response = await fetch('http://localhost:4000/api/auth/profile', {
+          const response = await fetch('/api/auth/profile', {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -502,36 +506,52 @@ const FaceTouchDetector = () => {
             setIsAuthenticated(true);
             checkSubscriptionStatus();
           } else {
-            // Token is invalid, clear it
+            // Token is invalid, clear it and show auth modal
             logout();
+            setShowAuthModal(true);
+            setAuthMode('login');
           }
         } catch (error) {
           console.error('Auth check error:', error);
+          // On error, clear token and show auth modal
           logout();
+          setShowAuthModal(true);
+          setAuthMode('login');
+        } finally {
+            setIsAuthCheckComplete(true);
         }
+      } else {
+        setIsAuthCheckComplete(true);
       }
     };
 
     checkAuthStatus();
   }, [token]);
 
-  // Trial management effects
+  // Trial management effects - REMOVED, now handled by checkSubscriptionStatus
   useEffect(() => {
-    if (isAuthenticated) {
-      checkSubscriptionStatus();
-    }
-    
     // Set up trial timer
     const trialTimer = setInterval(() => {
-      if (trialStartTime && isTrialActive && !isTrialExpired) {
-        checkTrialStatus();
+      if (isTrialActive && !isTrialExpired) {
+        // Recalculate remaining time
+        if (trialStartTime) {
+          const elapsed = Date.now() - trialStartTime;
+          const newRemaining = 3600000 - elapsed;
+          if (newRemaining <= 0) {
+            setIsTrialExpired(true);
+            setIsTrialActive(false);
+            setTrialTimeRemaining(0);
+          } else {
+            setTrialTimeRemaining(newRemaining);
+          }
+        }
       }
     }, 1000);
     
     return () => {
       clearInterval(trialTimer);
     };
-  }, [isAuthenticated, trialStartTime, isTrialActive, isTrialExpired]);
+  }, [isTrialActive, isTrialExpired, trialStartTime]);
 
   // User Management Functions (now handled by authentication)
 
@@ -598,7 +618,7 @@ const FaceTouchDetector = () => {
   // Authentication Functions
   const login = async (email, password) => {
     try {
-      const response = await fetch('http://localhost:4000/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -609,17 +629,20 @@ const FaceTouchDetector = () => {
       const data = await response.json();
       
       if (data.success) {
+        // First update token and user state
         setToken(data.token);
         setUser(data.user);
         setIsAuthenticated(true);
-        localStorage.setItem('aura_auth_token', data.token);
+        localStorage.setItem('ascends_auth_token', data.token);
+        
+        // Then close the modal
         setShowAuthModal(false);
         console.log('✅ Logged in successfully');
         
-        // Check subscription status after login
-        checkSubscriptionStatus();
+        // Finally check subscription status to sync trial/premium state
+        await checkSubscriptionStatus();
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -627,60 +650,85 @@ const FaceTouchDetector = () => {
     }
   };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, confirmPassword) => {
     try {
-      const response = await fetch('http://localhost:4000/api/auth/register', {
+      console.log('🔄 Attempting registration for:', email);
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, confirmPassword }),
       });
 
-      const data = await response.json();
+      console.log('📡 Response status:', response.status);
       
-      if (data.success) {
-        if (data.requiresEmailVerification) {
-          // Show email verification message instead of logging in
-          setEmailVerificationSent(true);
-          console.log('✅ Account created - Email verification required');
-        } else {
-          // For backward compatibility, still allow immediate login
-          setToken(data.token);
-          setUser(data.user);
-          setIsAuthenticated(true);
-          localStorage.setItem('aura_auth_token', data.token);
-          setShowAuthModal(false);
-          console.log('✅ Account created successfully');
-        }
+      let data;
+      try {
+        data = await response.json();
+        console.log('📋 Response data:', data);
+      } catch (jsonError) {
+        console.error('❌ JSON parsing error:', jsonError);
+        throw new Error('Server response was not valid JSON');
+      }
+      
+      if (response.ok) {
+        // Registration successful - always show email verification message
+        setEmailVerificationSent(true);
+        console.log('✅ Account created - Email verification required');
       } else {
-        throw new Error(data.error);
+        // Handle validation errors
+        if (data.errors && Array.isArray(data.errors)) {
+          const errorMessages = data.errors.map(err => err.msg).join(', ');
+          console.log('❌ Validation errors:', errorMessages);
+          throw new Error(errorMessages);
+        } else {
+          console.log('❌ Registration error:', data.error);
+          throw new Error(data.error || 'Registration failed');
+        }
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('🚨 Registration error:', error);
       throw error;
     }
   };
 
   const logout = () => {
+    // Stop all media streams and processing
+    stopDetection();
+
+    // Reset authentication and user state
     setToken('');
     setUser(null);
     setIsAuthenticated(false);
+    
+    // Reset subscription state but keep trial info so it persists across sessions
     setHasLifetimePlan(false);
-    setIsTrialActive(false);
     setTrialStartTime(null);
-    localStorage.removeItem('aura_auth_token');
-    localStorage.removeItem('aura_trial_start');
-    console.log('✅ Logged out successfully');
+    setTrialTimeRemaining(0);
+    setIsTrialActive(false);
+    setIsTrialExpired(false);
+    
+    // Clear authentication token only
+    localStorage.removeItem('ascends_auth_token');
+
+    // Reset UI and internal state
+    setIsCameraOn(false);
+    setDetectionActive(false);
+    setAlert({ type: '', message: '' });
+    setShowAuthModal(false);
+    setShowUpgradeModal(false);
+
+    console.log('✅ Logged out successfully and reset application state.');
   };
 
   const checkSubscriptionStatus = async () => {
-    if (!user) {
+    if (!token) {
       return;
     }
     
     try {
-      const response = await fetch('http://localhost:4000/api/stripe/subscription-status', {
+      const response = await fetch('/api/stripe/subscription-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -688,20 +736,51 @@ const FaceTouchDetector = () => {
       
       const data = await response.json();
       
-      if (data.success) {
-        if (data.hasLifetimeAccess) {
-          setHasLifetimePlan(true);
+      if (response.ok && data.success) {
+        setHasLifetimePlan(data.hasLifetimeAccess);
+        
+        // Sync trial state from backend
+        const backendRemaining = typeof data.trialTimeRemaining === 'number' ? data.trialTimeRemaining : null;
+        const backendStart     = data.trialStartTime ?? data.trial_start_time;
+
+        if (backendRemaining !== null && backendRemaining >= 0) {
+          // Trust the backend-supplied remaining time
+          const start = Date.now() - (3600000 - backendRemaining);
+          setTrialStartTime(start);
+          setTrialTimeRemaining(backendRemaining);
+          setIsTrialActive(backendRemaining > 0);
+          setIsTrialExpired(backendRemaining <= 0);
+        } else if (backendStart) {
+          const startTime = new Date(backendStart).getTime();
+          const now = Date.now();
+          const elapsed = now - startTime;
+          const remaining = 3600000 - elapsed;
+          
+          if (remaining > 0) {
+          setTrialStartTime(startTime);
+          setTrialTimeRemaining(remaining);
+            setIsTrialActive(true);
+            setIsTrialExpired(false);
+        } else {
+            setTrialStartTime(startTime);
+            setTrialTimeRemaining(0);
+            setIsTrialActive(false);
+            setIsTrialExpired(true);
+          }
+        } else {
+            setTrialStartTime(null);
+          setTrialTimeRemaining(0);
           setIsTrialActive(false);
-          console.log('✅ Lifetime plan active!');
-        } else if (data.trialActive) {
-          setIsTrialActive(true);
-          setTrialStartTime(data.trialStartTime);
-          setTrialTimeRemaining(data.trialTimeRemaining);
-          console.log('✅ Trial active!');
+          setIsTrialExpired(false);
         }
+      } else {
+         console.error('Failed to get subscription status:', data.error || 'Unknown error');
+         setHasLifetimePlan(false);
+         setIsTrialActive(false);
+         setIsTrialExpired(false);
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      console.error('Error fetching subscription:', error);
     }
   };
 
@@ -713,7 +792,7 @@ const FaceTouchDetector = () => {
     }
     
     try {
-      const response = await fetch('http://localhost:4000/api/auth/start-trial', {
+      const response = await fetch('/api/auth/start-trial', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -723,12 +802,17 @@ const FaceTouchDetector = () => {
       const data = await response.json();
       
       if (data.success) {
-        setTrialStartTime(data.trial_start_time);
+        // Update state based on successful API call
+        const rawStart = data.trial_start_time ?? data.trialStartTime;
+        const startTime = rawStart ? Number(rawStart) : Date.now();
+        setTrialStartTime(startTime);
         setIsTrialActive(true);
         setIsTrialExpired(false);
-        setTrialTimeRemaining(3600000);
-        localStorage.setItem('aura_trial_start', data.trial_start_time.toString());
+        setTrialTimeRemaining(3600000); // Reset to full hour
         console.log('🎉 Free trial started via API!');
+        
+        // Re-check status to get the exact remaining time from server
+        await checkSubscriptionStatus();
       } else {
         throw new Error(data.error);
       }
@@ -1244,10 +1328,9 @@ const FaceTouchDetector = () => {
     }
   };
 
-  // WRIST-BASED: Much more reliable than finger tracking
+  // FULL HAND-BASED: Checks all hand landmarks against the nose.
   function checkFaceTouch(faceLandmarks, handLandmarks) {
-    // Skip hand landmarks - we'll use wrists from pose instead
-    if (!faceLandmarks || !window.currentPoseLandmarks) {
+    if (!faceLandmarks || !handLandmarks || handLandmarks.length === 0) {
       return { isTouching: false, minDist: 999 };
     }
     
@@ -1259,87 +1342,62 @@ const FaceTouchDetector = () => {
     const W = video.videoWidth;
     const H = video.videoHeight;
     const { threshold: THRESHOLD } = detectionStateRef.current;
-    const poseLandmarks = window.currentPoseLandmarks;
+
+    // Key reference points: nose (1) and chin (152)
+    const nosePoint = faceLandmarks[1];
+    const chinPoint = faceLandmarks[152];
+    if (!nosePoint || !chinPoint) {
+      return { isTouching: false, minDist: 999 };
+    }
+    const nosePx = { x: nosePoint.x * W, y: nosePoint.y * H };
+    const chinPx = { x: chinPoint.x * W, y: chinPoint.y * H };
     
-    // Face points to check
-    const FACE_POINTS = [
-      1,    // Nose tip
-      10,   // Forehead
-      151,  // Chin
-      234,  // Left cheek  
-      454,  // Right cheek
-    ];
-    
-    // Wrist points from pose detection (much more reliable)
-    const WRIST_POINTS = [
-      15,   // Left wrist
-      16,   // Right wrist
-    ];
-    
-    // Get face center and boundaries for smart filtering
-    let faceTop = 1, faceBottom = 0, faceLeft = 1, faceRight = 0;
-    FACE_POINTS.forEach(fIdx => {
-      if (fIdx < faceLandmarks.length) {
-        const face = faceLandmarks[fIdx];
-        faceTop = Math.min(faceTop, face.y);
-        faceBottom = Math.max(faceBottom, face.y);
-        faceLeft = Math.min(faceLeft, face.x);
-        faceRight = Math.max(faceRight, face.x);
-      }
-    });
-    
+    // Dynamic distance threshold – 60 % of face height, but never below user slider (THRESHOLD)
+    const faceHeightPx = Math.abs(chinPx.y - nosePx.y) * (100/60); // approximate full face height from nose-chin gap
+    const dynamicThreshold = Math.max(THRESHOLD, faceHeightPx * 0.6);
+
+    // Build list of candidate hand points: all hand landmarks plus pose wrists as fallback
+    const candidatePoints = [];
+
+    // 1. From MediaPipe Hands (full hand landmarks)
+    if (handLandmarks && handLandmarks.length) {
+      handLandmarks.forEach(lms => {
+        lms.forEach(pt => pt && candidatePoints.push({ x: pt.x * W, y: pt.y * H }));
+      });
+    }
+
+    // 2. Fallback: pose wrists (landmarks 15 & 16) – useful when Hands loses a static hand
+    if (window.currentPoseLandmarks && window.currentPoseLandmarks.length >= 17) {
+      [15, 16].forEach(idx => {
+        const w = window.currentPoseLandmarks[idx];
+        if (w && w.visibility > 0.4) {
+          candidatePoints.push({ x: w.x * W, y: w.y * H });
+        }
+      });
+    }
+
+    if (candidatePoints.length === 0) {
+      return { isTouching: false, minDist: 999 };
+    }
+
     let minDist = 999;
-    let touchingHands = [];
-    
-    // Check each wrist against face points
-    for (const wristIdx of WRIST_POINTS) {
-      if (wristIdx >= poseLandmarks.length) continue;
-      
-      const wrist = poseLandmarks[wristIdx];
-      if (!wrist || wrist.visibility < 0.5) continue; // Skip if wrist not visible
-      
-      const wristX = wrist.x * W;
-      const wristY = wrist.y * H;
-      
-      // SMART FILTER: Only check wrists that are in the face region
-      // Skip wrists that are clearly below the face (resting on desk/lap)
-      const faceBottomY = faceBottom * H;
-      const faceTopY = faceTop * H;
-      const faceHeight = faceBottomY - faceTopY;
-      
-      // Allow some margin below face, but not too much
-      const allowedBelowFace = faceHeight * 0.3; // 30% of face height below
-      if (wristY > faceBottomY + allowedBelowFace) {
-        console.log(`[FILTER] ${wristIdx === 15 ? 'LEFT' : 'RIGHT'} wrist too low (${wristY.toFixed(0)} > ${(faceBottomY + allowedBelowFace).toFixed(0)}) - skipping`);
-        continue;
-      }
-      
-      // Check against each face point
-      for (const fIdx of FACE_POINTS) {
-        if (fIdx >= faceLandmarks.length) continue;
+
+    // Check each candidate point
+    for (const pt of candidatePoints) {
+      const distNose = Math.hypot(nosePx.x - pt.x, nosePx.y - pt.y);
+      const distChin = Math.hypot(chinPx.x - pt.x, chinPx.y - pt.y);
+      const dist = Math.min(distNose, distChin);
         
-        const faceX = faceLandmarks[fIdx].x * W;
-        const faceY = faceLandmarks[fIdx].y * H;
-        
-        // Simple distance
-        const dist = Math.sqrt((wristX - faceX) ** 2 + (wristY - faceY) ** 2);
-        
-        if (dist < minDist) {
-          minDist = dist;
-        }
-        
-        // Found touch?
-        if (dist < THRESHOLD) {
-          const wristSide = wristIdx === 15 ? 'LEFT' : 'RIGHT';
-          console.log(`[TOUCH] ${wristSide} wrist near face point ${fIdx}: ${dist.toFixed(1)}px`);
-          touchingHands.push(wristSide);
+      if (dist < minDist) minDist = dist;
+
+      if (dist < dynamicThreshold) {
+        console.log(`[TOUCH] Hand/wrist near face: ${dist.toFixed(1)}px (dynThresh ${dynamicThreshold.toFixed(1)}px)`);
           return { isTouching: true, minDist: dist };
-        }
       }
     }
     
-    console.log(`[NO TOUCH] Min distance: ${minDist.toFixed(1)}px (need < ${THRESHOLD}px)`);
-    return { isTouching: false, minDist: minDist };
+    console.log(`[NO TOUCH] Min distance: ${minDist.toFixed(1)}px (need < ${dynamicThreshold.toFixed(1)}px)`);
+    return { isTouching: false, minDist };
   }
 
   // Draw results on canvas (optimized for low CPU)
@@ -2349,6 +2407,33 @@ const FaceTouchDetector = () => {
     console.log(`[WEB AUDIO] Started looping ${soundType} for ${alertType}`);
   };
 
+  // UI Logic for displaying trial status
+  const renderTrialStatus = () => {
+    if (isTrialActive && !isTrialExpired) {
+      return (
+        <div className="text-center">
+          <span className="text-green-400">Trial Active: {formatTrialTime(trialTimeRemaining)} remaining</span>
+        </div>
+      );
+    }
+    return (
+      <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
+        Start Free Trial Now
+      </button>
+    );
+  };
+
+  if (!isAuthCheckComplete) {
+    return (
+        <div className="gradient-bg text-gray-200 flex items-center justify-center h-screen">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+                <p className="text-lg font-semibold">Loading Ascends...</p>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className="gradient-bg text-gray-200">
       {/* Header */}
@@ -2356,7 +2441,7 @@ const FaceTouchDetector = () => {
         <div className="flex justify-center items-center relative">
           {/* Left side */}
           <div className="absolute left-0">
-            <h1 className="text-2xl font-bold text-white">Aura Posture</h1>
+            <h1 className="text-2xl font-bold text-white">Ascends</h1>
           </div>
           
           {/* Center */}
@@ -2419,10 +2504,10 @@ const FaceTouchDetector = () => {
         <section className="container mx-auto px-6 pt-8 pb-16">
           <div className="text-center mb-8">
             <h2 className="text-4xl md:text-6xl font-extrabold text-white leading-tight">
-              Unlock Peak Focus & <br /> Perfect Posture with AI
+              Unlock Clear Skin & <br /> Perfect Posture with AI
             </h2>
             <p className="mt-6 text-lg text-gray-400 max-w-2xl mx-auto">
-              Get real-time feedback on your posture and subconscious habits. Aura uses your webcam to help you build confidence and stay focused.
+              Get real-time feedback on your posture and subconscious habits. Ascends uses your webcam to help you build confidence and stay healthy.
               <span className="block mt-2 font-semibold text-blue-400">Your camera data never leaves your device.</span>
             </p>
             {debugInfo && (
@@ -2550,7 +2635,7 @@ const FaceTouchDetector = () => {
                   <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl p-4 text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <User className="w-5 h-5 text-blue-400" />
-                      <span className="text-white font-semibold">🔐 Account Required</span>
+                      <span className="text-white font-semibold">Account Required</span>
                     </div>
                     <p className="text-gray-300 text-sm mb-3">
                       Create a free account to start your 1-hour trial with full access to all premium features!
@@ -2575,23 +2660,17 @@ const FaceTouchDetector = () => {
                     <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-xl p-4 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <Crown className="w-5 h-5 text-yellow-400" />
-                        <span className="text-white font-semibold">🎉 Get 1 Hour FREE Trial!</span>
+                        <span className="text-white font-semibold">Get 1 Hour FREE Trial!</span>
                       </div>
                       <p className="text-gray-300 text-sm mb-3">
                         Access all premium features for 1 hour - no payment required!
                       </p>
-                      <button
-                        onClick={startTrial}
-                        className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold px-6 py-2 rounded-lg transition-all shadow-lg"
-                      >
-                        Start Free Trial Now
-                      </button>
+                      {renderTrialStatus()}
                     </div>
                   ) : isTrialActive && !isTrialExpired ? (
                     <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl p-4 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Crown className="w-5 h-5 text-yellow-400" />
-                        <span className="text-white font-semibold">✨ Trial Active - All Features Unlocked!</span>
+                        <span className="text-white font-semibold">Trial Active</span>
                       </div>
                       <p className="text-gray-300 text-sm">
                         Time remaining: <span className="text-yellow-400 font-bold">{formatTrialTime(trialTimeRemaining)}</span>
@@ -2601,7 +2680,7 @@ const FaceTouchDetector = () => {
                     <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-xl p-4 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <AlertTriangle className="w-5 h-5 text-red-400" />
-                        <span className="text-white font-semibold">⏰ Trial Expired</span>
+                        <span className="text-white font-semibold">Trial Expired</span>
                       </div>
                       <p className="text-gray-300 text-sm mb-3">
                         Upgrade to the lifetime plan to continue using all premium features!
@@ -2654,45 +2733,6 @@ const FaceTouchDetector = () => {
                 >
                   <Settings className="w-5 h-5" />
                   Settings
-                </button>
-                <button
-                  onClick={() => {
-                    const video = videoRef.current;
-                    console.log('Video Debug Info:');
-                    console.log('- Video element exists:', !!video);
-                    console.log('- Video srcObject:', !!video?.srcObject);
-                    console.log('- Video readyState:', video?.readyState);
-                    console.log('- Video videoWidth:', video?.videoWidth);
-                    console.log('- Video videoHeight:', video?.videoHeight);
-                    console.log('- Video paused:', video?.paused);
-                    console.log('- hasPermission:', hasPermission);
-                    console.log('- Stream tracks:', streamRef.current?.getTracks().length);
-                    
-                    if (video && !video.srcObject && streamRef.current) {
-                      console.log('Reconnecting video stream...');
-                      video.srcObject = streamRef.current;
-                      video.play().catch(console.error);
-                    }
-                    
-                    // Fix permission state if video is working but permission is false
-                    if (video && video.srcObject && video.readyState === 4 && !hasPermission) {
-                      console.log('Fixing permission state - video is working');
-                      setHasPermission(true);
-                    }
-                    
-                    // Force video to play if it's paused
-                    if (video && video.srcObject && video.paused) {
-                      console.log('Video is paused - forcing play');
-                      video.play().catch(error => {
-                        console.error('Error forcing video play:', error);
-                      });
-                    }
-                    
-                    setDebugInfo(`Video: ${video?.videoWidth}x${video?.videoHeight} | Ready: ${video?.readyState} | Stream: ${!!video?.srcObject} | Permission: ${hasPermission} | Playing: ${!video?.paused}`);
-                  }}
-                  className="px-4 py-2 glass-card text-gray-300 rounded-lg text-sm hover:bg-white/10 transition-colors"
-                >
-                  Debug
                 </button>
               </div>
 
@@ -2877,7 +2917,7 @@ const FaceTouchDetector = () => {
                         {!isFaceSizeCalibrated && faceDetected && (
                           <div className="bg-yellow-600/20 border border-yellow-500/30 p-3 rounded-lg">
                             <p className="text-yellow-400 text-sm">
-                              📸 Face size not calibrated. Click "Set Good Posture" button to calibrate.
+                              Face size not calibrated. Click "Set Good Posture" button to calibrate.
                             </p>
                           </div>
                         )}
@@ -3031,7 +3071,7 @@ const FaceTouchDetector = () => {
             {isActive && !isCalibrated && (
               <div className="lg:col-span-3 flex justify-center">
                 <div className="px-6 py-3 bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 rounded-xl text-sm font-medium">
-                  ⚡ Please calibrate your good posture for accurate detection!
+                  Please calibrate your good posture for accurate detection!
                 </div>
               </div>
             )}
@@ -3044,7 +3084,7 @@ const FaceTouchDetector = () => {
       {/* Footer */}
       <footer className="border-t border-gray-800">
         <div className="container mx-auto px-6 py-8 text-center text-gray-500">
-          <p>&copy; 2025 Aura Posture. All rights reserved.</p>
+          <p>&copy; 2025 Ascends. All rights reserved.</p>
         </div>
       </footer>
 
@@ -3081,13 +3121,14 @@ const FaceTouchDetector = () => {
 // Main App component with routing
 const App = () => {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/" element={<FaceTouchDetector />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/success" element={<SuccessPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/cancel" element={<FaceTouchDetector />} />
+        <Route path="/login" element={<FaceTouchDetector />} />
       </Routes>
     </Router>
   );

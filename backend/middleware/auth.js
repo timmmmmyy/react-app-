@@ -52,7 +52,7 @@ const authenticateToken = async (req, res, next) => {
     req.user = {
       id: user.id,
       email: user.email,
-      trial_start_time: user.trial_start_time,
+      trial_start_time: user.trial_start_time ? Number(user.trial_start_time) : null,
       has_lifetime_access: user.has_lifetime_access,
       stripe_customer_id: user.stripe_customer_id
     };
@@ -81,7 +81,7 @@ const optionalAuth = async (req, res, next) => {
           req.user = {
             id: user.id,
             email: user.email,
-            trial_start_time: user.trial_start_time,
+            trial_start_time: user.trial_start_time ? Number(user.trial_start_time) : null,
             has_lifetime_access: user.has_lifetime_access,
             stripe_customer_id: user.stripe_customer_id
           };

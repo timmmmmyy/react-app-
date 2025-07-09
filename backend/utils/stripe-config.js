@@ -1,4 +1,11 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Ensure we always use a valid Stripe secret key in development
+let SECRET = process.env.STRIPE_SECRET_KEY;
+if (!SECRET || /sk_test_[\*a-zA-Z0-9]+here/.test(SECRET)) {
+  SECRET = 'sk_test_51RfFJT1aP22gHUavKnZBaejbnKKiBuRwuxUidgdcaocpH2tlIzy4jlnsPal4wmIYxP6pHAzpp17VmBg2Y6gemdQw00d2lI1rZS';
+  process.env.STRIPE_SECRET_KEY = SECRET;
+}
+
+const stripe = require('stripe')(SECRET);
 
 // Subscription plans configuration
 const SUBSCRIPTION_PLANS = {
@@ -68,7 +75,7 @@ const createStripeCustomer = async (email, name = null, metadata = {}) => {
       email,
       metadata: {
         ...metadata,
-        created_via: 'aura_posture_app'
+        created_via: 'ascends_app'
       }
     };
 

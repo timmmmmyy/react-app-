@@ -1,6 +1,6 @@
-# Aura Posture - Stripe Payment Integration Setup Guide
+# Ascends - Stripe Payment Integration Setup Guide
 
-This guide will walk you through setting up the complete Stripe payment integration for the Aura Posture application.
+This guide will walk you through setting up the complete Stripe payment integration for the Ascends application.
 
 ## 🏗️ Project Structure
 
