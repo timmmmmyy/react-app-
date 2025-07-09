@@ -4,7 +4,12 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "build" }
+      "config": {
+        "distDir": "build",
+        "env": {
+          "CI": "false"
+        }
+      }
     },
     {
       "src": "backend/server.js",
