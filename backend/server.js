@@ -186,16 +186,6 @@ app.post('/api/auth/register', authLimiter, validateRegistration, async (req, re
 
 // Email confirmation endpoint
 app.get('/api/auth/confirm-email', async (req, res) => {
-    // Add CORS headers
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
-    
-    // Handle preflight request
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    
     try {
         const { token } = req.query;
         
