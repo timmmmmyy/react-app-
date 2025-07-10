@@ -14,14 +14,36 @@ class EmailService {
                 return;
             }
 
+            const regionEnv = (process.env.MAILGUN_REGION || '').toUpperCase();
+
+            // Determine API base URL based on region (default to US if not specified)
+            const apiBaseUrl = regionEnv === 'EU' ?
+                'https://api.eu.mailgun.net' :
+                'https://api.mailgun.net';
+
+            // Mailgun historically issued API keys that already contained the
+            // "key-" prefix (e.g. key-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX) but
+            // newer account-level and domain-level keys are provided *without*
+            // that prefix and are much longer (typically 64 chars with two
+            // hyphen-separated segments).
+            //
+            // To stay compatible with both formats we only auto-prepend the
+            // prefix when the key looks like the **legacy** 32-character hex
+            // token. Otherwise we assume the key is already in its correct
+            // form and send it to Mailgun unmodified.
+            let apiKey = (process.env.MAILGUN_API_KEY || '').trim();
+            if (apiKey && !apiKey.startsWith('key-') && apiKey.length === 32) {
+                apiKey = `key-${apiKey}`;
+            }
+
             const mailgun = new Mailgun(formData);
             this.mailgun = mailgun.client({
                 username: 'api',
-                key: process.env.MAILGUN_API_KEY,
-                url: 'https://api.eu.mailgun.net'
+                key: apiKey,
+                url: apiBaseUrl
             });
             
-            console.log('✅ Mailgun email service initialized for EU region');
+            console.log(`✅ Mailgun email service initialized for ${regionEnv === 'EU' ? 'EU' : 'US'} region`);
         } catch (error) {
             console.error('❌ Mailgun setup error:', error);
             this.mailgun = null;

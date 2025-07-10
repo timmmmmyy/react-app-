@@ -31,7 +31,7 @@ const VerifyEmailPage = () => {
         verificationAttempted.current = true;
         console.log('Attempting to verify email with token:', token);
         
-        const apiUrl = process.env.REACT_APP_API_URL || '';
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:4000';
         const response = await fetch(`${apiUrl}/api/auth/confirm-email?token=${token}`, {
           method: 'GET',
           headers: {

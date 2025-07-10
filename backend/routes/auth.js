@@ -11,7 +11,12 @@ const {
   findAllUnverifiedUsers
 } = require('../utils/database');
 const { generateToken, authenticateToken } = require('../middleware/auth');
-const { generateVerificationToken, sendVerificationEmail } = require('../utils/email');
+const { emailService } = require('../server'); // Import the shared email service
+const crypto = require('crypto');
+
+const generateVerificationToken = () => {
+  return crypto.randomBytes(32).toString('hex');
+};
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -53,7 +58,7 @@ router.post('/register', async (req, res) => {
     await updateUserEmailVerificationToken(user.id, verificationToken, expiresAt.toISOString());
     
     // Send verification email
-    await sendVerificationEmail(email, verificationToken);
+    await emailService.sendConfirmationEmail(email, verificationToken);
 
     res.status(201).json({
       success: true,

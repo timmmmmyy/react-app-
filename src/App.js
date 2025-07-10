@@ -494,7 +494,7 @@ const FaceTouchDetector = () => {
     const checkAuthStatus = async () => {
       if (token) {
         try {
-          const response = await fetch('/api/auth/profile', {
+          const response = await fetch('http://localhost:4000/api/auth/profile', {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -618,7 +618,7 @@ const FaceTouchDetector = () => {
   // Authentication Functions
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('http://localhost:4000/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -653,7 +653,7 @@ const FaceTouchDetector = () => {
   const register = async (name, email, password, confirmPassword) => {
     try {
       console.log('🔄 Attempting registration for:', email);
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('http://localhost:4000/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -728,7 +728,7 @@ const FaceTouchDetector = () => {
     }
     
     try {
-      const response = await fetch('/api/stripe/subscription-status', {
+      const response = await fetch('http://localhost:4000/api/stripe/subscription-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -792,7 +792,7 @@ const FaceTouchDetector = () => {
     }
     
     try {
-      const response = await fetch('/api/auth/start-trial', {
+      const response = await fetch('http://localhost:4000/api/auth/start-trial', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

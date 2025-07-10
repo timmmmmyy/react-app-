@@ -12,7 +12,7 @@ const PricingPage = () => {
   const checkAuthStatus = useCallback(async () => {
     if (token) {
       try {
-        const response = await fetch('/api/auth/profile', {
+        const response = await fetch('http://localhost:4000/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -62,7 +62,7 @@ const PricingPage = () => {
       setError(null);
 
       // Create checkout session for lifetime plan
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      const response = await fetch('http://localhost:4000/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

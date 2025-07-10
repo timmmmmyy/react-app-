@@ -1,3 +1,5 @@
+console.log(`[${new Date().toISOString()}] SERVER.JS STARTING UP...`);
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -21,6 +23,7 @@ console.log('💳 Using Stripe secret key:', STRIPE_SECRET_KEY.slice(0,15)+'...'
 const stripe = require('stripe')(STRIPE_SECRET_KEY);
 
 const db = require('./database');
+console.log(`[${new Date().toISOString()}] Instantiating EmailService...`);
 const EmailService = require('./emailService');
 const emailService = new EmailService(); // Create a single, shared instance
 
@@ -570,11 +573,8 @@ app.post('/api/dev/delete-all-users', async (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({ 
-        error: 'Internal server error',
-        details: err.message
-    });
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
 });
 
 // 404 handler
@@ -591,21 +591,4 @@ app._router.stack.forEach(function(r){
     }
 });
 
-// Start server only if NOT running on Vercel (Vercel sets the env var `VERCEL`)
-if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => {
-    console.log(`\n🚀 Ascends Backend running on http://localhost:${PORT}`);
-    console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`💳 Stripe integration: ${process.env.STRIPE_SECRET_KEY ? '✅ Connected' : '❌ Missing keys'}`);
-    // Email status
-    if (emailService.mailgun) {
-      console.log('📧 Email service: ✅ Connected');
-    } else {
-      console.log('📧 Email service: ❌ Missing config');
-    }
-  });
-}
-
-// Export the Express app for serverless platforms like Vercel
-module.exports = app; 
+module.exports = { app, emailService }; // Export both app and emailService 

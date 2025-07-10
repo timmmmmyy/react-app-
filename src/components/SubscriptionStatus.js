@@ -23,7 +23,7 @@ const SubscriptionStatus = ({ user, onUpgrade }) => {
         throw new Error('No authentication token');
       }
 
-      const response = await fetch('/api/stripe/subscription-status', {
+      const response = await fetch('http://localhost:4000/api/stripe/subscription-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

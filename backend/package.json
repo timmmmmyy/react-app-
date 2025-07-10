@@ -2,10 +2,10 @@
   "name": "ascends-backend",
   "version": "1.0.0",
   "description": "Backend for AI-powered posture coaching SaaS with email confirmation and Stripe integration",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
