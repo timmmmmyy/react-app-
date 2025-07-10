@@ -37,6 +37,8 @@ const VerifyEmailPage = () => {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
+            // Add this header to bypass the ngrok browser warning page
+            'ngrok-skip-browser-warning': 'true',
           },
         });
         

@@ -231,15 +231,18 @@ app.get('/api/auth/confirm-email', async (req, res) => {
         }
         
         console.log('Successfully confirmed user:', user.email);
-        
-        // Send welcome email
-        await emailService.sendWelcomeEmail(user.email);
-        
-        res.json({ 
-            message: 'Email confirmed successfully. Your account is now active!',
-            email: user.email
+
+        // Instead of redirecting, send a clear JSON success response.
+        // The frontend will be responsible for navigating the user.
+        return res.status(200).json({
+            message: 'Email confirmed successfully.',
+            user: {
+                id: user.id,
+                email: user.email,
+                is_confirmed: 1 // or true
+            }
         });
-        
+
     } catch (error) {
         console.error('Email confirmation error:', error);
         res.status(500).json({ 
