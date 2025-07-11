@@ -1,17 +1,11 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+import apiService from './apiService';
 
 class StripeService {
   // Get all subscription plans
   async getPlans() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stripe/plans`);
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch plans');
-      }
-      
-      return data.plans;
+      const response = await apiService.fetch('/api/stripe/plans');
+      return response.plans;
     } catch (error) {
       console.error('Error fetching plans:', error);
       throw error;
@@ -21,25 +15,7 @@ class StripeService {
   // Create a checkout session
   async createCheckoutSession(planId, priceId, customerEmail = null, customerName = null) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stripe/create-checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          planId,
-          priceId,
-          customerEmail,
-          customerName
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to create checkout session');
-      }
-      
+      const data = await apiService.createCheckoutSession(planId, priceId, customerEmail, customerName);
       return data;
     } catch (error) {
       console.error('Error creating checkout session:', error);
@@ -50,13 +26,7 @@ class StripeService {
   // Get session details
   async getSessionDetails(sessionId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stripe/session/${sessionId}`);
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch session details');
-      }
-      
+      const data = await apiService.fetch(`/api/stripe/session/${sessionId}`);
       return data.session;
     } catch (error) {
       console.error('Error fetching session details:', error);
@@ -67,23 +37,13 @@ class StripeService {
   // Create customer portal session
   async createPortalSession(sessionId = null, customerId = null) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stripe/create-portal-session`, {
+      const data = await apiService.fetch('/api/stripe/create-portal-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           sessionId,
           customerId
         }),
       });
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to create portal session');
-      }
-      
       return data.url;
     } catch (error) {
       console.error('Error creating portal session:', error);
@@ -94,13 +54,7 @@ class StripeService {
   // Check subscription status by email
   async getSubscriptionStatus(customerEmail) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stripe/subscription-status/${encodeURIComponent(customerEmail)}`);
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to check subscription status');
-      }
-      
+      const data = await apiService.fetch(`/api/stripe/subscription-status/${encodeURIComponent(customerEmail)}`);
       return {
         hasSubscription: data.hasSubscription,
         plan: data.plan,
@@ -151,4 +105,5 @@ class StripeService {
   }
 }
 
-export default new StripeService(); 
+const stripeService = new StripeService();
+export default stripeService; 

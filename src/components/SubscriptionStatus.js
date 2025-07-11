@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, ArrowRight, Settings, AlertCircle } from 'lucide-react';
 import stripeService from '../services/stripeService';
+import apiService from '../services/apiService';
 
 const SubscriptionStatus = ({ user, onUpgrade }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
@@ -23,17 +24,7 @@ const SubscriptionStatus = ({ user, onUpgrade }) => {
         throw new Error('No authentication token');
       }
 
-      const response = await fetch('http://localhost:4000/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch subscription status');
-      }
-
-      const status = await response.json();
+      const status = await apiService.getSubscriptionStatus();
       setSubscriptionStatus(status);
     } catch (err) {
       setError('Failed to check subscription status');

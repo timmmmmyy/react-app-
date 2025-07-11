@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Check, Crown, Zap, AlertCircle } from 'lucide-react';
+import apiService from '../services/apiService';
 
 const PricingPage = () => {
   const [loading, setLoading] = useState(true);
@@ -9,28 +10,18 @@ const PricingPage = () => {
   const [token, setToken] = useState(localStorage.getItem('ascends_auth_token') || '');
   const [canceled, setCanceled] = useState(false);
 
+// ... existing code ...
+
   const checkAuthStatus = useCallback(async () => {
     if (token) {
       try {
-        const response = await fetch('http://localhost:4000/api/auth/profile', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(true);
-        } else {
-          // Token is invalid
-          localStorage.removeItem('ascends_auth_token');
-          setToken('');
-        }
-              } catch (error) {
-          console.error('Auth check error:', error);
-          localStorage.removeItem('ascends_auth_token');
-          setToken('');
-        }
+        const data = await apiService.getProfile();
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        localStorage.removeItem('ascends_auth_token');
+        setToken('');
+      }
     }
   }, [token]);
 
@@ -62,25 +53,8 @@ const PricingPage = () => {
       setError(null);
 
       // Create checkout session for lifetime plan
-      const response = await fetch('http://localhost:4000/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          planId: 'lifetime',
-          priceId: 'price_lifetime' // Backend creates pricing dynamically
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        window.location.href = data.url;
-      } else {
-        throw new Error(data.error || 'Failed to create checkout session');
-      }
+      const data = await apiService.createCheckoutSession('lifetime', 'price_lifetime');
+      window.location.href = data.url;
     } catch (err) {
       setError(`Failed to start checkout: ${err.message}`);
       console.error('Checkout error:', err);

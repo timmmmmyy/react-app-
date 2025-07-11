@@ -7,6 +7,7 @@ import SuccessPage from './pages/SuccessPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import SubscriptionStatus from './components/SubscriptionStatus';
 import stripeService from './services/stripeService';
+import apiService from './services/apiService';
 // Removed Firebase imports - using custom backend authentication
 
 // Authentication Modal Component
@@ -494,23 +495,10 @@ const FaceTouchDetector = () => {
     const checkAuthStatus = async () => {
       if (token) {
         try {
-          const response = await fetch('http://localhost:4000/api/auth/profile', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-            setIsAuthenticated(true);
-            checkSubscriptionStatus();
-          } else {
-            // Token is invalid, clear it and show auth modal
-            logout();
-            setShowAuthModal(true);
-            setAuthMode('login');
-          }
+          const data = await apiService.getProfile();
+          setUser(data.user);
+          setIsAuthenticated(true);
+          checkSubscriptionStatus();
         } catch (error) {
           console.error('Auth check error:', error);
           // On error, clear token and show auth modal
@@ -618,32 +606,20 @@ const FaceTouchDetector = () => {
   // Authentication Functions
   const login = async (email, password) => {
     try {
-      const response = await fetch('http://localhost:4000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
+      const data = await apiService.login(email, password);
       
-      if (data.success) {
-        // First update token and user state
-        setToken(data.token);
-        setUser(data.user);
-        setIsAuthenticated(true);
-        localStorage.setItem('ascends_auth_token', data.token);
-        
-        // Then close the modal
-        setShowAuthModal(false);
-        console.log('✅ Logged in successfully');
-        
-        // Finally check subscription status to sync trial/premium state
-        await checkSubscriptionStatus();
-      } else {
-        throw new Error(data.error || 'Login failed');
-      }
+      // First update token and user state
+      setToken(data.token);
+      setUser(data.user);
+      setIsAuthenticated(true);
+      localStorage.setItem('ascends_auth_token', data.token);
+      
+      // Then close the modal
+      setShowAuthModal(false);
+      console.log('✅ Logged in successfully');
+      
+      // Finally check subscription status to sync trial/premium state
+      await checkSubscriptionStatus();
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -653,40 +629,11 @@ const FaceTouchDetector = () => {
   const register = async (name, email, password, confirmPassword) => {
     try {
       console.log('🔄 Attempting registration for:', email);
-      const response = await fetch('http://localhost:4000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, confirmPassword }),
-      });
-
-      console.log('📡 Response status:', response.status);
+      const data = await apiService.register(email, password, confirmPassword);
       
-      let data;
-      try {
-        data = await response.json();
-        console.log('📋 Response data:', data);
-      } catch (jsonError) {
-        console.error('❌ JSON parsing error:', jsonError);
-        throw new Error('Server response was not valid JSON');
-      }
-      
-      if (response.ok) {
-        // Registration successful - always show email verification message
-        setEmailVerificationSent(true);
-        console.log('✅ Account created - Email verification required');
-      } else {
-        // Handle validation errors
-        if (data.errors && Array.isArray(data.errors)) {
-          const errorMessages = data.errors.map(err => err.msg).join(', ');
-          console.log('❌ Validation errors:', errorMessages);
-          throw new Error(errorMessages);
-        } else {
-          console.log('❌ Registration error:', data.error);
-          throw new Error(data.error || 'Registration failed');
-        }
-      }
+      // Registration successful - always show email verification message
+      setEmailVerificationSent(true);
+      console.log('✅ Account created - Email verification required');
     } catch (error) {
       console.error('🚨 Registration error:', error);
       throw error;
@@ -728,59 +675,49 @@ const FaceTouchDetector = () => {
     }
     
     try {
-      const response = await fetch('http://localhost:4000/api/stripe/subscription-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const data = await apiService.getSubscriptionStatus();
       
-      const data = await response.json();
+      setHasLifetimePlan(data.hasLifetimeAccess);
       
-      if (response.ok && data.success) {
-        setHasLifetimePlan(data.hasLifetimeAccess);
-        
-        // Sync trial state from backend
-        const backendRemaining = typeof data.trialTimeRemaining === 'number' ? data.trialTimeRemaining : null;
-        const backendStart     = data.trialStartTime ?? data.trial_start_time;
+      // Sync trial state from backend
+      const backendRemaining = typeof data.trialTimeRemaining === 'number' ? data.trialTimeRemaining : null;
+      const backendStart     = data.trialStartTime ?? data.trial_start_time;
 
-        if (backendRemaining !== null && backendRemaining >= 0) {
-          // Trust the backend-supplied remaining time
-          const start = Date.now() - (3600000 - backendRemaining);
-          setTrialStartTime(start);
-          setTrialTimeRemaining(backendRemaining);
-          setIsTrialActive(backendRemaining > 0);
-          setIsTrialExpired(backendRemaining <= 0);
-        } else if (backendStart) {
-          const startTime = new Date(backendStart).getTime();
-          const now = Date.now();
-          const elapsed = now - startTime;
-          const remaining = 3600000 - elapsed;
-          
-          if (remaining > 0) {
+      if (backendRemaining !== null && backendRemaining >= 0) {
+        // Trust the backend-supplied remaining time
+        const start = Date.now() - (3600000 - backendRemaining);
+        setTrialStartTime(start);
+        setTrialTimeRemaining(backendRemaining);
+        setIsTrialActive(backendRemaining > 0);
+        setIsTrialExpired(backendRemaining <= 0);
+      } else if (backendStart) {
+        const startTime = new Date(backendStart).getTime();
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const remaining = 3600000 - elapsed;
+        
+        if (remaining > 0) {
           setTrialStartTime(startTime);
           setTrialTimeRemaining(remaining);
-            setIsTrialActive(true);
-            setIsTrialExpired(false);
+          setIsTrialActive(true);
+          setIsTrialExpired(false);
         } else {
-            setTrialStartTime(startTime);
-            setTrialTimeRemaining(0);
-            setIsTrialActive(false);
-            setIsTrialExpired(true);
-          }
-        } else {
-            setTrialStartTime(null);
+          setTrialStartTime(startTime);
           setTrialTimeRemaining(0);
           setIsTrialActive(false);
-          setIsTrialExpired(false);
+          setIsTrialExpired(true);
         }
       } else {
-         console.error('Failed to get subscription status:', data.error || 'Unknown error');
-         setHasLifetimePlan(false);
-         setIsTrialActive(false);
-         setIsTrialExpired(false);
+        setTrialStartTime(null);
+        setTrialTimeRemaining(0);
+        setIsTrialActive(false);
+        setIsTrialExpired(false);
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);
+      setHasLifetimePlan(false);
+      setIsTrialActive(false);
+      setIsTrialExpired(false);
     }
   };
 
@@ -792,30 +729,19 @@ const FaceTouchDetector = () => {
     }
     
     try {
-      const response = await fetch('http://localhost:4000/api/auth/start-trial', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const data = await apiService.startTrial();
       
-      const data = await response.json();
+      // Update state based on successful API call
+      const rawStart = data.trial_start_time ?? data.trialStartTime;
+      const startTime = rawStart ? Number(rawStart) : Date.now();
+      setTrialStartTime(startTime);
+      setIsTrialActive(true);
+      setIsTrialExpired(false);
+      setTrialTimeRemaining(3600000); // Reset to full hour
+      console.log('🎉 Free trial started via API!');
       
-      if (data.success) {
-        // Update state based on successful API call
-        const rawStart = data.trial_start_time ?? data.trialStartTime;
-        const startTime = rawStart ? Number(rawStart) : Date.now();
-        setTrialStartTime(startTime);
-        setIsTrialActive(true);
-        setIsTrialExpired(false);
-        setTrialTimeRemaining(3600000); // Reset to full hour
-        console.log('🎉 Free trial started via API!');
-        
-        // Re-check status to get the exact remaining time from server
-        await checkSubscriptionStatus();
-      } else {
-        throw new Error(data.error);
-      }
+      // Re-check status to get the exact remaining time from server
+      await checkSubscriptionStatus();
     } catch (error) {
       console.error('API trial start error:', error);
       
