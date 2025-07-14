@@ -29,7 +29,7 @@ const VerifyEmailPage = () => {
 
       try {
         verificationAttempted.current = true;
-        console.log('Attempting to verify email with token:', token);
+        console.log('DEBUG_DEPLOYMENT_TEST_V2: Attempting to verify email with token:', token);
         
         const verificationUrl = new URL('/api/auth/confirm-email', process.env.REACT_APP_API_URL);
         verificationUrl.searchParams.set('token', token);
