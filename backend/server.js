@@ -38,7 +38,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
     : [
         process.env.FRONTEND_URL || 'http://localhost:3000',
-        'https://ascends-frontend.vercel.app' // example Vercel URL – override via ALLOWED_ORIGINS
+        'https://ascends.me'
     ];
 
 app.use(cors({
