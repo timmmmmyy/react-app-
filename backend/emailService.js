@@ -79,8 +79,9 @@ class EmailService {
     }
 
     async sendConfirmationEmail(email, confirmationToken) {
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const confirmationUrl = `${frontendUrl}/verify-email?token=${confirmationToken}`;
+        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        const confirmationUrl = new URL('/verify-email', frontendUrl);
+        confirmationUrl.searchParams.set('token', confirmationToken);
         
         const subject = 'Confirm Your Ascends Account';
         
