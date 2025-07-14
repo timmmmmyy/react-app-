@@ -496,9 +496,9 @@ const FaceTouchDetector = () => {
       if (token) {
         try {
           const data = await apiService.getProfile();
-          setUser(data.user);
-          setIsAuthenticated(true);
-          checkSubscriptionStatus();
+            setUser(data.user);
+            setIsAuthenticated(true);
+            checkSubscriptionStatus();
         } catch (error) {
           console.error('Auth check error:', error);
           // On error, clear token and show auth modal
@@ -608,18 +608,18 @@ const FaceTouchDetector = () => {
     try {
       const data = await apiService.login(email, password);
       
-      // First update token and user state
-      setToken(data.token);
-      setUser(data.user);
-      setIsAuthenticated(true);
-      localStorage.setItem('ascends_auth_token', data.token);
-      
-      // Then close the modal
-      setShowAuthModal(false);
-      console.log('✅ Logged in successfully');
-      
-      // Finally check subscription status to sync trial/premium state
-      await checkSubscriptionStatus();
+        // First update token and user state
+        setToken(data.token);
+        setUser(data.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('ascends_auth_token', data.token);
+        
+        // Then close the modal
+        setShowAuthModal(false);
+        console.log('✅ Logged in successfully');
+        
+        // Finally check subscription status to sync trial/premium state
+        await checkSubscriptionStatus();
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -630,10 +630,10 @@ const FaceTouchDetector = () => {
     try {
       console.log('🔄 Attempting registration for:', email);
       const data = await apiService.register(email, password, confirmPassword);
-      
-      // Registration successful - always show email verification message
-      setEmailVerificationSent(true);
-      console.log('✅ Account created - Email verification required');
+
+        // Registration successful - always show email verification message
+        setEmailVerificationSent(true);
+        console.log('✅ Account created - Email verification required');
     } catch (error) {
       console.error('🚨 Registration error:', error);
       throw error;
@@ -677,47 +677,47 @@ const FaceTouchDetector = () => {
     try {
       const data = await apiService.getSubscriptionStatus();
       
-      setHasLifetimePlan(data.hasLifetimeAccess);
-      
-      // Sync trial state from backend
-      const backendRemaining = typeof data.trialTimeRemaining === 'number' ? data.trialTimeRemaining : null;
-      const backendStart     = data.trialStartTime ?? data.trial_start_time;
-
-      if (backendRemaining !== null && backendRemaining >= 0) {
-        // Trust the backend-supplied remaining time
-        const start = Date.now() - (3600000 - backendRemaining);
-        setTrialStartTime(start);
-        setTrialTimeRemaining(backendRemaining);
-        setIsTrialActive(backendRemaining > 0);
-        setIsTrialExpired(backendRemaining <= 0);
-      } else if (backendStart) {
-        const startTime = new Date(backendStart).getTime();
-        const now = Date.now();
-        const elapsed = now - startTime;
-        const remaining = 3600000 - elapsed;
+        setHasLifetimePlan(data.hasLifetimeAccess);
         
-        if (remaining > 0) {
+        // Sync trial state from backend
+        const backendRemaining = typeof data.trialTimeRemaining === 'number' ? data.trialTimeRemaining : null;
+        const backendStart     = data.trialStartTime ?? data.trial_start_time;
+
+        if (backendRemaining !== null && backendRemaining >= 0) {
+          // Trust the backend-supplied remaining time
+          const start = Date.now() - (3600000 - backendRemaining);
+          setTrialStartTime(start);
+          setTrialTimeRemaining(backendRemaining);
+          setIsTrialActive(backendRemaining > 0);
+          setIsTrialExpired(backendRemaining <= 0);
+        } else if (backendStart) {
+          const startTime = new Date(backendStart).getTime();
+          const now = Date.now();
+          const elapsed = now - startTime;
+          const remaining = 3600000 - elapsed;
+          
+          if (remaining > 0) {
           setTrialStartTime(startTime);
           setTrialTimeRemaining(remaining);
-          setIsTrialActive(true);
-          setIsTrialExpired(false);
+            setIsTrialActive(true);
+            setIsTrialExpired(false);
         } else {
-          setTrialStartTime(startTime);
+            setTrialStartTime(startTime);
+            setTrialTimeRemaining(0);
+            setIsTrialActive(false);
+            setIsTrialExpired(true);
+          }
+        } else {
+            setTrialStartTime(null);
           setTrialTimeRemaining(0);
           setIsTrialActive(false);
-          setIsTrialExpired(true);
+          setIsTrialExpired(false);
         }
-      } else {
-        setTrialStartTime(null);
-        setTrialTimeRemaining(0);
-        setIsTrialActive(false);
-        setIsTrialExpired(false);
-      }
     } catch (error) {
       console.error('Error fetching subscription:', error);
-      setHasLifetimePlan(false);
-      setIsTrialActive(false);
-      setIsTrialExpired(false);
+         setHasLifetimePlan(false);
+         setIsTrialActive(false);
+         setIsTrialExpired(false);
     }
   };
 
@@ -731,17 +731,17 @@ const FaceTouchDetector = () => {
     try {
       const data = await apiService.startTrial();
       
-      // Update state based on successful API call
-      const rawStart = data.trial_start_time ?? data.trialStartTime;
-      const startTime = rawStart ? Number(rawStart) : Date.now();
-      setTrialStartTime(startTime);
-      setIsTrialActive(true);
-      setIsTrialExpired(false);
-      setTrialTimeRemaining(3600000); // Reset to full hour
-      console.log('🎉 Free trial started via API!');
-      
-      // Re-check status to get the exact remaining time from server
-      await checkSubscriptionStatus();
+        // Update state based on successful API call
+        const rawStart = data.trial_start_time ?? data.trialStartTime;
+        const startTime = rawStart ? Number(rawStart) : Date.now();
+        setTrialStartTime(startTime);
+        setIsTrialActive(true);
+        setIsTrialExpired(false);
+        setTrialTimeRemaining(3600000); // Reset to full hour
+        console.log('🎉 Free trial started via API!');
+        
+        // Re-check status to get the exact remaining time from server
+        await checkSubscriptionStatus();
     } catch (error) {
       console.error('API trial start error:', error);
       

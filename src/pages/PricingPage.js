@@ -16,12 +16,12 @@ const PricingPage = () => {
     if (token) {
       try {
         const data = await apiService.getProfile();
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Auth check error:', error);
-        localStorage.removeItem('ascends_auth_token');
-        setToken('');
-      }
+          setIsAuthenticated(true);
+              } catch (error) {
+          console.error('Auth check error:', error);
+          localStorage.removeItem('ascends_auth_token');
+          setToken('');
+        }
     }
   }, [token]);
 
@@ -54,7 +54,7 @@ const PricingPage = () => {
 
       // Create checkout session for lifetime plan
       const data = await apiService.createCheckoutSession('lifetime', 'price_lifetime');
-      window.location.href = data.url;
+        window.location.href = data.url;
     } catch (err) {
       setError(`Failed to start checkout: ${err.message}`);
       console.error('Checkout error:', err);
