@@ -34,12 +34,11 @@ app.use(helmet());
 
 // CORS: Allow multiple origins passed via environment variable
 // Use ALLOWED_ORIGINS="https://frontend.vercel.app,https://mydomain.com" for production
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-    : [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
-        'https://ascends.me'
-    ];
+const allowedOrigins = [
+    ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : []),
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://ascends.me'
+];
 
 app.use(cors({
     origin: function (origin, callback) {
