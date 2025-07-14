@@ -22,6 +22,7 @@
 # Backend environment variables
 backend/.env
 backend/node_modules
+/backend/database.sqlite
 
 npm-debug.log*
 yarn-debug.log*
