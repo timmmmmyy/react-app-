@@ -27,6 +27,9 @@ console.log(`[${new Date().toISOString()}] Instantiating EmailService...`);
 const EmailService = require('./emailService');
 const emailService = new EmailService(); // Create a single, shared instance
 
+// Import admin routes
+const adminRoutes = require('./routes/admin');
+
 const app = express();
 
 // Security middleware
@@ -580,6 +583,9 @@ app.post('/api/dev/delete-all-users', async (req, res) => {
         });
     }
 });
+
+// Mount admin routes
+app.use('/api/admin', adminRoutes(authenticateToken));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

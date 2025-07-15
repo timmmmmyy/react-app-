@@ -237,6 +237,20 @@ const dbOperations = {
                 resolve(this.changes > 0);
             });
         });
+    },
+
+    async grantPremiumAccess(email) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `UPDATE users SET is_premium = 1, premium_purchased_at = CURRENT_TIMESTAMP WHERE email = ?`;
+            db.run(sql, [email], function(err) {
+                if (err) {
+                    console.error('Error granting premium access:', err);
+                    return reject(err);
+                }
+                resolve(this.changes > 0);
+            });
+        });
     }
 };
 
