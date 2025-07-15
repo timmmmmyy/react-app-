@@ -34,6 +34,7 @@ async function initializeDatabase() {
             password_hash TEXT NOT NULL,
             is_confirmed BOOLEAN DEFAULT 0,
             confirmation_token TEXT,
+            email_verification_expires_at DATETIME,
             is_premium BOOLEAN DEFAULT 0,
             stripe_customer_id TEXT,
             stripe_payment_intent_id TEXT,
@@ -84,6 +85,7 @@ const dbOperations = {
                     password_hash,
                     CASE WHEN is_confirmed = 1 THEN 1 ELSE 0 END as is_confirmed,
                     confirmation_token,
+                    email_verification_expires_at, -- Include this field
                     CASE WHEN is_premium = 1 THEN 1 ELSE 0 END as is_premium,
                     stripe_customer_id,
                     stripe_payment_intent_id,
@@ -127,7 +129,8 @@ const dbOperations = {
             if (!token) {
                 return reject(new Error('Token is required'));
             }
-            const sql = `SELECT * FROM users WHERE confirmation_token = ?`;
+            // Ensure the user is not already confirmed and the token is not expired
+            const sql = `SELECT * FROM users WHERE confirmation_token = ? AND is_confirmed = 0 AND email_verification_expires_at > CURRENT_TIMESTAMP`;
             db.get(sql, [token], (err, row) => {
                 if (err) {
                     return reject(err);
@@ -137,11 +140,11 @@ const dbOperations = {
         });
     },
     
-    async updateConfirmationToken(userId, newToken) {
+    async updateConfirmationToken(userId, newToken, expiresAt) {
         await connectToDatabase();
         return new Promise((resolve, reject) => {
-            const sql = `UPDATE users SET confirmation_token = ? WHERE id = ?`;
-            db.run(sql, [newToken, userId], function(err) {
+            const sql = `UPDATE users SET confirmation_token = ?, email_verification_expires_at = ? WHERE id = ?`;
+            db.run(sql, [newToken, expiresAt, userId], function(err) {
                 if (err) {
                     return reject(err);
                 }
@@ -164,7 +167,8 @@ const dbOperations = {
                 SET 
                     is_confirmed = 1, 
                     confirmed_at = CURRENT_TIMESTAMP, 
-                    confirmation_token = NULL 
+                    confirmation_token = NULL, 
+                    email_verification_expires_at = NULL 
                 WHERE confirmation_token = ? AND is_confirmed = 0
             `;
             

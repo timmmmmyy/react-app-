@@ -39,16 +39,6 @@ code {
   left: 0;
   pointer-events: none;
   z-index: 10;
-  display: none !important; /* Completely hide canvas */
-}
-
-/* Hide any MediaPipe drawing elements */
-canvas[class*="face-touch-overlay"],
-canvas[style*="transform"],
-canvas[data-mediapipe] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
 }
 
 .alert-animation {
