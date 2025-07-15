@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../database'); // Use a single db object
 const { 
   createUser, 
   findUserByEmail, 
@@ -7,9 +8,9 @@ const {
   updateUserTrialStart,
   updateUserLifetimeAccess,
   updateUserEmailVerificationToken,
-  verifyUserEmail,
+  // Removed verifyUserEmail as it's not directly exported like this
   findAllUnverifiedUsers
-} = require('../utils/database');
+} = db;
 const { generateToken, authenticateToken } = require('../middleware/auth');
 const { emailService } = require('../server'); // Import the shared email service
 const crypto = require('crypto');
@@ -47,6 +48,28 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // Check if user already exists
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      if (!existingUser.is_confirmed) {
+        // User exists but is not confirmed, regenerate token and resend email
+        const newVerificationToken = generateVerificationToken();
+        await updateUserEmailVerificationToken(existingUser.id, newVerificationToken, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+        await emailService.sendConfirmationEmail(email, newVerificationToken);
+        return res.status(200).json({
+          success: true,
+          message: 'Account already exists but is unverified. A new verification email has been sent. Please check your inbox.',
+          requiresEmailVerification: true
+        });
+      } else {
+        // User exists and is confirmed
+        return res.status(409).json({
+          success: false,
+          error: 'An account with this email already exists and is verified. Please log in.'
+        });
+      }
+    }
+
     // Create user
     const user = await createUser(email, password);
     
@@ -72,14 +95,6 @@ router.post('/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error);
-    
-    if (error.message === 'Email already exists') {
-      return res.status(409).json({
-        success: false,
-        error: 'An account with this email already exists'
-      });
-    }
-
     res.status(500).json({
       success: false,
       error: 'Failed to create account'
@@ -100,9 +115,19 @@ router.get('/confirm-email', async (req, res) => {
     }
 
     // Verify the token and update user
-    const user = await verifyUserEmail(token);
+    const confirmed = await db.confirmUser(token);
     
-    // Generate login token for the verified user
+    if (!confirmed) {
+        // This means the token was not found or the user was already confirmed
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid or expired verification link.',
+            message: 'This link may have already been used or a newer one has been issued. Please try logging in or registering again to get a new link.'
+        });
+    }
+
+    // Find the user again to get updated information for the response
+    const user = await db.findUserByConfirmationToken(token); // Token should be null now, so find by email instead
     const loginToken = generateToken(user.id);
 
     res.json({
@@ -118,14 +143,6 @@ router.get('/confirm-email', async (req, res) => {
 
   } catch (error) {
     console.error('Email verification error:', error);
-    
-    if (error.message === 'Invalid or expired verification token') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid or expired verification link. Please request a new one.'
-      });
-    }
-
     res.status(500).json({
       success: false,
       error: 'Email verification failed'
@@ -156,7 +173,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Check if email is verified
-    if (!user.email_verified) {
+    if (!user.is_confirmed) { // Changed from email_verified to is_confirmed
       return res.status(401).json({
         success: false,
         error: 'Please verify your email address before logging in. Check your email for the verification link.'
@@ -284,9 +301,9 @@ if (process.env.NODE_ENV === 'development') {
         message: 'Recent verification tokens (development only)',
         tokens: users.map(user => ({
           email: user.email,
-          token: user.email_verification_token,
+          token: user.confirmation_token, // Corrected to confirmation_token
           expires: user.email_verification_expires_at,
-          verifyUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${user.email_verification_token}`
+          verifyUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${user.confirmation_token}` // Corrected to confirmation_token
         }))
       });
     } catch (error) {
@@ -310,7 +327,17 @@ if (process.env.NODE_ENV === 'development') {
       }
 
       const latestUser = users[0]; // Most recent unverified user
-      const verifiedUser = await verifyUserEmail(latestUser.email_verification_token);
+      const confirmed = await db.confirmUser(latestUser.confirmation_token); // Use db.confirmUser and confirmation_token
+      
+      if (!confirmed) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to auto-verify user in database'
+        });
+      }
+
+      // Retrieve the user again to get the updated status
+      const verifiedUser = await findUserByEmail(latestUser.email); // Retrieve by email as token is now null
       
       // Generate login token for the verified user
       const loginToken = generateToken(verifiedUser.id);
@@ -321,7 +348,7 @@ if (process.env.NODE_ENV === 'development') {
         user: {
           id: verifiedUser.id,
           email: verifiedUser.email,
-          emailVerified: true
+          is_confirmed: true // Use is_confirmed
         },
         token: loginToken
       });
