@@ -32,6 +32,12 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
+// Add a logging middleware to inspect incoming requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] Incoming Request: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // CORS: Allow multiple origins passed via environment variable
 // Use ALLOWED_ORIGINS="https://frontend.vercel.app,https://mydomain.com" for production
 const allowedOrigins = [
