@@ -1328,6 +1328,9 @@ const FaceTouchDetector = () => {
 
   // Draw results on canvas (optimized for low CPU)
   const drawResults = () => {
+    // Completely disable all drawing - no skeleton tracking visible
+    return;
+    
     if (!isTabVisible) return;
     
     // Skip drawing more aggressively for performance
@@ -2300,7 +2303,7 @@ const FaceTouchDetector = () => {
                   className="absolute top-0 left-0 w-full h-full face-touch-overlay"
                   style={{ 
                     transform: 'scaleX(-1)',
-                    display: 'block',
+                    display: 'none', // Completely hide canvas to remove all skeleton tracking
                     pointerEvents: 'none',
                     zIndex: 20,
                     position: 'absolute',
