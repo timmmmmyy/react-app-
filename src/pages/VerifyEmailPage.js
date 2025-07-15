@@ -31,11 +31,12 @@ const VerifyEmailPage = () => {
         verificationAttempted.current = true;
         console.log('Attempting to verify email with token:', token);
         
-        // Ensure REACT_APP_API_URL is correctly set in Vercel environment variables
-        const verificationUrl = new URL('/api/auth/confirm-email', process.env.REACT_APP_API_URL);
-        verificationUrl.searchParams.set('token', token);
+        const apiUrl = process.env.REACT_APP_API_URL;
+        // Ensure no double slashes by cleaning the base URL and manually concatenating
+        const cleanedApiUrl = apiUrl && apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+        const verificationUrl = `${cleanedApiUrl}/api/auth/confirm-email?token=${token}`;
 
-        const response = await fetch(verificationUrl.toString(), {
+        const response = await fetch(verificationUrl, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
