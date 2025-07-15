@@ -29,8 +29,9 @@ const VerifyEmailPage = () => {
 
       try {
         verificationAttempted.current = true;
-        console.log('DEBUG_DEPLOYMENT_TEST_V2: Attempting to verify email with token:', token);
+        console.log('Attempting to verify email with token:', token);
         
+        // Ensure REACT_APP_API_URL is correctly set in Vercel environment variables
         const verificationUrl = new URL('/api/auth/confirm-email', process.env.REACT_APP_API_URL);
         verificationUrl.searchParams.set('token', token);
 
