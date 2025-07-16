@@ -50,6 +50,23 @@ async function initializeDatabase() {
             console.error('Error creating users table:', err.message);
         } else {
             console.log('Users table ready.');
+            // Add email_verification_expires_at column if it doesn't exist
+            db.run(`PRAGMA table_info(users)`, (err, rows) => {
+                if (err) {
+                    console.error('Error checking table info:', err.message);
+                    return;
+                }
+                const columnExists = rows.some(row => row.name === 'email_verification_expires_at');
+                if (!columnExists) {
+                    db.run(`ALTER TABLE users ADD COLUMN email_verification_expires_at DATETIME`, (alterErr) => {
+                        if (alterErr) {
+                            console.error('Error adding email_verification_expires_at column:', alterErr.message);
+                        } else {
+                            console.log('Added email_verification_expires_at column to users table.');
+                        }
+                    });
+                }
+            });
         }
     });
 }
