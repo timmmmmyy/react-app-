@@ -152,11 +152,18 @@ const dbOperations = {
             if (!token) {
                 return reject(new Error('Token is required'));
             }
-            // Ensure the user is not already confirmed and the token is not expired
-            const sql = `SELECT * FROM users WHERE confirmation_token = ? AND is_confirmed = 0 AND email_verification_expires_at > CURRENT_TIMESTAMP`;
+            // Check for user with token, not confirmed, and either no expiry or not expired
+            const sql = `SELECT * FROM users WHERE confirmation_token = ? AND is_confirmed = 0 AND (email_verification_expires_at IS NULL OR email_verification_expires_at > CURRENT_TIMESTAMP)`;
+            console.log(`[DEBUG] Searching for token: ${token}`);
             db.get(sql, [token], (err, row) => {
                 if (err) {
+                    console.error('[DEBUG] Database error:', err);
                     return reject(err);
+                }
+                if (row) {
+                    console.log(`[DEBUG] Found user with token: ${row.email}`);
+                } else {
+                    console.log(`[DEBUG] No user found with token: ${token}`);
                 }
                 resolve(row);
             });

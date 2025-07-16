@@ -108,6 +108,8 @@ router.get('/confirm-email', async (req, res) => {
   try {
     const { token } = req.query;
 
+    console.log(`[CONFIRM-EMAIL] Received token: ${token}`);
+
     if (!token) {
       return res.status(400).json({
         success: false,
@@ -116,8 +118,10 @@ router.get('/confirm-email', async (req, res) => {
     }
 
     // First, find the user by token to get their email before confirming
+    console.log(`[CONFIRM-EMAIL] Searching for user with token...`);
     const userWithToken = await db.findUserByConfirmationToken(token);
     if (!userWithToken) {
+      console.log(`[CONFIRM-EMAIL] No user found with token: ${token}`);
       return res.status(400).json({
         success: false,
         error: 'Invalid or expired confirmation link.',
@@ -125,20 +129,27 @@ router.get('/confirm-email', async (req, res) => {
       });
     }
 
+    console.log(`[CONFIRM-EMAIL] Found user: ${userWithToken.email}`);
+
     // Verify the token and update user
+    console.log(`[CONFIRM-EMAIL] Confirming user...`);
     const confirmed = await db.confirmUser(token);
     
     if (!confirmed) {
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid or expired verification link.',
-            message: 'This link may have already been used or a newer one has been issued. Please try logging in or registering again to get a new link.'
-        });
+      console.log(`[CONFIRM-EMAIL] Failed to confirm user`);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired verification link.',
+        message: 'This link may have already been used or a newer one has been issued. Please try logging in or registering again to get a new link.'
+      });
     }
+
+    console.log(`[CONFIRM-EMAIL] User confirmed successfully`);
 
     // Find the user by email since the token is now cleared
     const user = await db.findUserByEmail(userWithToken.email);
     if (!user) {
+      console.log(`[CONFIRM-EMAIL] User not found after confirmation`);
       return res.status(500).json({
         success: false,
         error: 'User not found after confirmation'
@@ -146,6 +157,8 @@ router.get('/confirm-email', async (req, res) => {
     }
 
     const loginToken = generateToken(user.id);
+
+    console.log(`[CONFIRM-EMAIL] Email verification successful for: ${user.email}`);
 
     res.json({
       success: true,
