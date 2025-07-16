@@ -51,9 +51,14 @@ async function initializeDatabase() {
         } else {
             console.log('Users table ready.');
             // Add email_verification_expires_at column if it doesn't exist
-            db.run(`PRAGMA table_info(users)`, (err, rows) => {
+            db.all(`PRAGMA table_info(users)`, (err, rows) => {
                 if (err) {
                     console.error('Error checking table info:', err.message);
+                    return;
+                }
+                // Ensure rows is an array before calling .some()
+                if (!Array.isArray(rows)) {
+                    console.error('PRAGMA table_info did not return an array for rows:', rows);
                     return;
                 }
                 const columnExists = rows.some(row => row.name === 'email_verification_expires_at');
