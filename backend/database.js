@@ -82,8 +82,9 @@ const dbOperations = {
     async createUser(email, passwordHash, confirmationToken) {
         await connectToDatabase();
         return new Promise((resolve, reject) => {
-            const sql = `INSERT INTO users (email, password_hash, confirmation_token) VALUES (?, ?, ?)`;
-            db.run(sql, [email, passwordHash, confirmationToken], function(err) {
+            const sql = `INSERT INTO users (email, password_hash, confirmation_token, email_verification_expires_at) VALUES (?, ?, ?, ?)`;
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
+            db.run(sql, [email, passwordHash, confirmationToken, expiresAt], function(err) {
                 if (err) {
                     return reject(err);
                 }
@@ -275,6 +276,57 @@ const dbOperations = {
                     return reject(err);
                 }
                 resolve(this.changes > 0);
+            });
+        });
+    },
+
+    async updateUserEmailVerificationToken(userId, newToken, expiresAt) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `UPDATE users SET confirmation_token = ?, email_verification_expires_at = ? WHERE id = ?`;
+            db.run(sql, [newToken, expiresAt, userId], function(err) {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(this.changes > 0);
+            });
+        });
+    },
+
+    async verifyPassword(password, hash) {
+        const bcrypt = require('bcryptjs');
+        return bcrypt.compare(password, hash);
+    },
+
+    async updateUserTrialStart(email, trialStartTime) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `UPDATE users SET trial_start_time = ? WHERE email = ?`;
+            db.run(sql, [trialStartTime, email], function(err) {
+                if (err) return reject(err);
+                resolve(this.changes > 0);
+            });
+        });
+    },
+
+    async updateUserLifetimeAccess(email) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `UPDATE users SET is_premium = 1, premium_purchased_at = CURRENT_TIMESTAMP WHERE email = ?`;
+            db.run(sql, [email], function(err) {
+                if (err) return reject(err);
+                resolve(this.changes > 0);
+            });
+        });
+    },
+
+    async findAllUnverifiedUsers() {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT * FROM users WHERE is_confirmed = 0`;
+            db.all(sql, [], (err, rows) => {
+                if (err) return reject(err);
+                resolve(rows);
             });
         });
     }

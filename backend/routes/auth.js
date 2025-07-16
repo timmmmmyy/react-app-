@@ -71,14 +71,15 @@ router.post('/register', async (req, res) => {
     }
 
     // Create user
-    const user = await createUser(email, password);
-    
-    // Generate verification token
     const verificationToken = generateVerificationToken();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
-    // Store verification token in database
-    await updateUserEmailVerificationToken(user.id, verificationToken, expiresAt.toISOString());
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    // Create user with token and expiry
+    const user = await createUser(email, passwordHash, verificationToken);
     
     // Send verification email
     await emailService.sendConfirmationEmail(email, verificationToken);
@@ -114,11 +115,20 @@ router.get('/confirm-email', async (req, res) => {
       });
     }
 
+    // First, find the user by token to get their email before confirming
+    const userWithToken = await db.findUserByConfirmationToken(token);
+    if (!userWithToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired confirmation link.',
+        message: 'This link may have already been used or a newer one has been issued. Please try logging in or registering again to get a new link.'
+      });
+    }
+
     // Verify the token and update user
     const confirmed = await db.confirmUser(token);
     
     if (!confirmed) {
-        // This means the token was not found or the user was already confirmed
         return res.status(400).json({
             success: false,
             error: 'Invalid or expired verification link.',
@@ -126,8 +136,15 @@ router.get('/confirm-email', async (req, res) => {
         });
     }
 
-    // Find the user again to get updated information for the response
-    const user = await db.findUserByConfirmationToken(token); // Token should be null now, so find by email instead
+    // Find the user by email since the token is now cleared
+    const user = await db.findUserByEmail(userWithToken.email);
+    if (!user) {
+      return res.status(500).json({
+        success: false,
+        error: 'User not found after confirmation'
+      });
+    }
+
     const loginToken = generateToken(user.id);
 
     res.json({
