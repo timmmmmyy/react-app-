@@ -386,8 +386,8 @@ const FaceTouchDetector = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [powerSaveMode, setPowerSaveMode] = useState(true);
   // New: Hold times - REDUCED for faster response
-  const [faceTouchHoldTime, setFaceTouchHoldTime] = useState(1.5); // seconds - reduced from 2
-  const [postureHoldTime, setPostureHoldTime] = useState(1.5); // seconds - reduced from 2
+  const [faceTouchHoldTime, setFaceTouchHoldTime] = useState(2); // seconds - set to 2 for viz
+  const [postureHoldTime, setPostureHoldTime] = useState(2); // seconds - set to 2 for viz
 
   // Detection data
   const [faceDetected, setFaceDetected] = useState(false);
@@ -1018,37 +1018,34 @@ const FaceTouchDetector = () => {
       if (!postureStartTimeRef.current) {
         postureStartTimeRef.current = Date.now();
         postureAlertTriggeredRef.current = false;
-      } else {
-        const badPostureDuration = (Date.now() - postureStartTimeRef.current) / 1000;
-        
-        // Check for visual alert activation
-        if (badPostureDuration >= 2) {
-          setPostureAlertActive(true);
-        }
+      }
+      
+      const badPostureDuration = (Date.now() - postureStartTimeRef.current) / 1000;
+      const { postureHoldTime: holdTime_ref } = detectionStateRef.current;
 
-        const { postureHoldTime: holdTime_ref } = detectionStateRef.current;
-        if (badPostureDuration >= holdTime_ref && !postureAlertTriggeredRef.current) {
+      // If duration exceeds hold time, activate all alerts
+      if (badPostureDuration >= holdTime_ref) {
+        setPostureAlertActive(true); // Activate visualization
+        
+        // Trigger sound alert only once per continuous event
+        if (!postureAlertTriggeredRef.current) {
           postureAlertTriggeredRef.current = true;
           setPostureCount(prev => prev + 1);
-          setBadPostureAlert(true);
+          setBadPostureAlert(true); // For text pop-up
           setTimeout(() => setBadPostureAlert(false), 1000);
-          
           startPostureSound();
-        } else if (badPostureDuration >= holdTime_ref) {
-          if (!postureWebAudioRef.current) { // Check Web Audio ref
-            startPostureSound();
-          }
         }
       }
+      
     } else {
+      // Good posture, reset everything
       if (postureStartTimeRef.current) {
         postureStartTimeRef.current = null;
         postureAlertTriggeredRef.current = false;
       }
       setBadPosture(false);
       stopPostureSound();
-      // Clear visual alert
-      setPostureAlertActive(false);
+      setPostureAlertActive(false); // Deactivate visualization
     }
   };
 
@@ -1119,7 +1116,7 @@ const FaceTouchDetector = () => {
   // Draw results on canvas (optimized for low CPU)
   const drawResults = () => {
     const canvas = canvasRef.current;
-    if (!canvas || (!postureAlertActive && !faceAlertActive)) {
+    if (!canvas || !postureAlertActive) { // Visualization only for posture
       if (canvas) {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1155,48 +1152,63 @@ const FaceTouchDetector = () => {
       offsetX = (canvas.width - drawWidth) / 2;
     }
     const toCanvas = (lm) => ({
-      x: offsetX + lm.x * drawWidth,
-      y: offsetY + lm.y * drawHeight,
+      x: offsetX + (lm.x * drawWidth),
+      y: offsetY + (lm.y * drawHeight),
     });
 
     const isNeckExtended = faceSizeIncrease > detectionStateRef.current.faceSizeThreshold;
 
+    // GUIDANCE VISUALIZATION LOGIC
     if (postureAlertActive) {
-      if (isNeckExtended && window.currentFaceLandmarks) {
+      // Case 1: Neck Extension Alert
+      if (isNeckExtended && window.currentFaceLandmarks && detectionStateRef.current.isFaceSizeCalibrated) {
         const nose = window.currentFaceLandmarks[1];
         if (nose) {
           const p = toCanvas(nose);
-          const baseline = detectionStateRef.current.calibratedFaceSize || 50;
-          const scale = (baseline * Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight)) / 2;
-          const radiusGood = scale;
-          const radiusCurrent = radiusGood * (1 + faceSizeIncrease / 100);
-          ctx.strokeStyle = '#10b981';
-          ctx.lineWidth = 3;
+          const baselineSize = detectionStateRef.current.calibratedFaceSize;
+          const currentSize = currentFaceSize;
+          
+          // Scale radius based on video/canvas size difference
+          const videoToCanvasScale = Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight);
+          
+          // Base radius on the square root of the area for a more proportional circle
+          const radiusGood = Math.sqrt(baselineSize) * 0.5 * videoToCanvasScale;
+          const radiusCurrent = Math.sqrt(currentSize) * 0.5 * videoToCanvasScale;
+
+          // Draw green "good" circle
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)'; // Green
+          ctx.lineWidth = 4;
           ctx.beginPath();
           ctx.arc(p.x, p.y, radiusGood, 0, 2 * Math.PI);
           ctx.stroke();
-          ctx.strokeStyle = '#ef4444';
+          
+          // Draw red "current" circle
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.9)'; // Red
+          ctx.lineWidth = 4;
           ctx.beginPath();
           ctx.arc(p.x, p.y, radiusCurrent, 0, 2 * Math.PI);
           ctx.stroke();
         }
-      } else if (detectionStateRef.current.calibratedLandmarks && window.currentPoseLandmarks) {
+      // Case 2: Body Posture Alert
+      } else if (detectionStateRef.current.isCalibrated && window.currentPoseLandmarks) {
         const baseline = detectionStateRef.current.calibratedLandmarks;
         const currentKeys = getKeyPoints(window.currentPoseLandmarks, video.videoWidth, video.videoHeight);
         
-        ctx.fillStyle = '#10b981';
+        // Draw green "good" position dots
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.9)'; // Green
         Object.values(baseline).forEach(pt => {
           const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
           ctx.fill();
         });
 
-        ctx.fillStyle = '#ef4444';
+        // Draw red "current" position dots
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'; // Red
         Object.values(currentKeys).forEach(pt => {
           const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
           ctx.fill();
         });
       }
@@ -1205,9 +1217,9 @@ const FaceTouchDetector = () => {
     ctx.restore();
   };
 
-  // Timer refs for 2-second delays
-  const faceTimerRef = useRef(null);
-  const postureTimerRef = useRef(null);
+  // Timer refs for 2-second delays - REMOVED
+  // const faceTimerRef = useRef(null);
+  // const postureTimerRef = useRef(null);
 
   // Timer refs and start times for continuous detection
   const faceStartTimeRef = useRef(null);
@@ -1280,37 +1292,34 @@ const FaceTouchDetector = () => {
           if (!faceStartTimeRef.current) {
             faceStartTimeRef.current = Date.now();
             faceAlertTriggeredRef.current = false;
-          } else {
-            const touchDuration = (Date.now() - faceStartTimeRef.current) / 1000;
-            
-            // Check for visual alert activation
-            if (touchDuration >= 2) {
-              setFaceAlertActive(true);
-            }
+          }
+          
+          const touchDuration = (Date.now() - faceStartTimeRef.current) / 1000;
+          const { faceTouchHoldTime: holdTime_ref } = detectionStateRef.current;
 
-            const { faceTouchHoldTime: holdTime_ref } = detectionStateRef.current;
-            if (touchDuration >= holdTime_ref && !faceAlertTriggeredRef.current) {
+          // If duration exceeds hold time, activate all alerts
+          if (touchDuration >= holdTime_ref) {
+            setFaceAlertActive(true); // Activate visualization
+
+            // Trigger sound alert only once per continuous event
+            if (!faceAlertTriggeredRef.current) {
               faceAlertTriggeredRef.current = true;
               setTouchCount(prev => prev + 1);
               setFaceTouchAlert(true);
               setTimeout(() => setFaceTouchAlert(false), 1000);
-              
               startFaceTouchSound();
-            } else if (touchDuration >= holdTime_ref) {
-              if (!faceWebAudioRef.current) { // Check Web Audio ref
-                startFaceTouchSound();
-              }
             }
           }
+
         } else {
+          // Not touching - reset timer and stop sound
           if (faceStartTimeRef.current) {
             faceStartTimeRef.current = null;
             faceAlertTriggeredRef.current = false;
           }
           setIsTouchingFace(false);
           stopFaceTouchSound();
-          // Clear visual alert
-          setFaceAlertActive(false);
+          setFaceAlertActive(false); // Deactivate visualization
         }
       }
     } else {
@@ -1322,8 +1331,7 @@ const FaceTouchDetector = () => {
       window.currentHandLandmarks = null;
       setIsTouchingFace(false);
       stopFaceTouchSound();
-      // Clear visual alert
-      setFaceAlertActive(false);
+      setFaceAlertActive(false); // Deactivate visualization
     }
     drawResults();
   };
