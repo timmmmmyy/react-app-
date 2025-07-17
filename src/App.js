@@ -403,8 +403,8 @@ const FaceTouchDetector = () => {
   const [postureAlertInterval, setPostureAlertInterval] = useState(10); // seconds
 
   // Add state for alert sound selection
-  const [faceAlertSound, setFaceAlertSound] = useState('slap'); // Face touch sound
-  const [postureAlertSound, setPostureAlertSound] = useState('tuntun'); // Posture sound
+  const [faceAlertSound, setFaceAlertSound] = useState('chime'); // Face touch sound
+  const [postureAlertSound, setPostureAlertSound] = useState('chime'); // Posture sound
   const [customSoundUrl, setCustomSoundUrl] = useState('/alert.mp4'); // Set default custom sound
 
   // Add state for UI feedback
@@ -783,41 +783,23 @@ const FaceTouchDetector = () => {
   };
 
   // Update playAlert to support multiple sounds
-  const playAlert = () => {
-    console.log('[PLAY ALERT] Function called');
-    const { soundEnabled: soundEnabled_ref, alertSound: alertSound_ref, customSoundUrl: customSoundUrl_ref } = detectionStateRef.current;
-    console.log('[PLAY ALERT] Settings:', { soundEnabled: soundEnabled_ref, alertSound: alertSound_ref, customSoundUrl: customSoundUrl_ref });
+  const playAlert = (type) => {
+    const { soundEnabled: soundEnabled_ref, faceAlertSound: faceAlertSound_ref, postureAlertSound: postureAlertSound_ref } = detectionStateRef.current;
     
-    if (!soundEnabled_ref) {
-      console.log('[PLAY ALERT] Sound disabled, skipping');
-      return;
+    if (!soundEnabled_ref) return;
+
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const context = audioContextRef.current;
+    if (context.state === 'suspended') {
+      context.resume();
     }
 
-        if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-      console.log('[PLAY ALERT] AudioContext not ready, creating now.');
-          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const context = audioContextRef.current;
-        if (context.state === 'suspended') {
-          context.resume();
-        }
+    const soundToPlay = type === 'face' ? faceAlertSound_ref : postureAlertSound_ref;
 
     try {
-      console.log('[PLAY ALERT] Playing sound:', alertSound_ref);
-      if (alertSound_ref === 'beep') {
-        // Create beep sound using Web Audio API
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.frequency.setValueAtTime(800, context.currentTime);
-        oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.15);
-        console.log('[PLAY ALERT] Beep sound played');
-      } else if (alertSound_ref === 'chime') {
-        // Create chime sound using Web Audio API (since chime.mp3 is missing)
+      if (soundToPlay === 'chime') {
         const oscillator1 = context.createOscillator();
         const oscillator2 = context.createOscillator();
         const gainNode = context.createGain();
@@ -826,7 +808,6 @@ const FaceTouchDetector = () => {
         oscillator2.connect(gainNode);
         gainNode.connect(context.destination);
         
-        // Create a pleasant chime sound with two frequencies
         oscillator1.frequency.setValueAtTime(523.25, context.currentTime); // C5
         oscillator2.frequency.setValueAtTime(659.25, context.currentTime); // E5
         oscillator1.type = 'sine';
@@ -839,41 +820,6 @@ const FaceTouchDetector = () => {
         oscillator2.start(context.currentTime);
         oscillator1.stop(context.currentTime + 0.8);
         oscillator2.stop(context.currentTime + 0.8);
-        
-        console.log('[PLAY ALERT] Chime sound played (Web Audio API)');
-      } else if (alertSound_ref === 'custom' && customSoundUrl_ref) {
-        // Play custom uploaded sound (including MP4)
-        console.log('[PLAY ALERT] Playing custom sound:', customSoundUrl_ref);
-        const audio = new window.Audio(customSoundUrl_ref);
-        audio.volume = 0.7; // Slightly louder for custom sounds
-        audio.play().then(() => {
-          console.log('[PLAY ALERT] Custom sound played successfully');
-        }).catch((e) => {
-          console.log('[PLAY ALERT] Custom sound failed, falling back to beep:', e);
-          // Fallback to beep if custom sound fails
-          const oscillator = context.createOscillator();
-          const gainNode = context.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(context.destination);
-          oscillator.frequency.setValueAtTime(800, context.currentTime);
-          oscillator.type = 'sine';
-          gainNode.gain.setValueAtTime(0.3, context.currentTime);
-          oscillator.start(context.currentTime);
-          oscillator.stop(context.currentTime + 0.15);
-        });
-        console.log('[PLAY ALERT] Custom sound initiated');
-      } else {
-        // Fallback to beep if no valid sound selected
-        console.log('[PLAY ALERT] No valid sound, using beep fallback');
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.frequency.setValueAtTime(800, context.currentTime);
-        oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.15);
       }
     } catch (error) {
       console.error('[PLAY ALERT] Error playing sound:', error);
@@ -882,61 +828,16 @@ const FaceTouchDetector = () => {
 
   // Start continuous face touch alert sound
   const startFaceTouchSound = () => {
-    const { soundEnabled: soundEnabled_ref, faceAlertSound: faceAlertSound_ref, customSoundUrl: customSoundUrl_ref } = detectionStateRef.current;
-    console.log('[FACE SOUND] startFaceTouchSound called, soundEnabled:', soundEnabled_ref, 'faceAlertSound:', faceAlertSound_ref);
-    if (!soundEnabled_ref) {
-      console.log('[FACE SOUND] Sound disabled, returning');
-      return;
-    }
+    const { soundEnabled: soundEnabled_ref, faceAlertSound: faceAlertSound_ref } = detectionStateRef.current;
+    if (!soundEnabled_ref) return;
     
-    console.log('[FACE SOUND] Starting continuous face touch sound:', faceAlertSound_ref);
-    if (faceAudioRef.current) {
-      console.log('[FACE SOUND] Stopping existing face audio');
-      faceAudioRef.current.pause();
-      faceAudioRef.current = null;
-    }
-    
-    try {
-      let audioUrl;
-      if (faceAlertSound_ref === 'slap') {
-        audioUrl = '/slap.mp3';
-      } else if (faceAlertSound_ref === 'tuntun') {
-        audioUrl = '/alert.mp3';
-      } else if (faceAlertSound_ref === 'custom' && customSoundUrl_ref) {
-        audioUrl = customSoundUrl_ref;
-      } else {
-        // Fallback to Web Audio API for beep/chime
-        console.log('[FACE SOUND] Using Web Audio API for:', faceAlertSound_ref);
-        startWebAudioLoop(faceAlertSound_ref, 'face');
-        return;
-      }
-      
-      console.log('[FACE SOUND] Creating new Audio object for:', audioUrl);
-      faceAudioRef.current = new Audio(audioUrl);
-      faceAudioRef.current.loop = true;
-      faceAudioRef.current.volume = 0.6;
-      
-      console.log('[FACE SOUND] Attempting to play face touch sound');
-      faceAudioRef.current.play().then(() => {
-        console.log('[FACE SOUND] Face touch sound started successfully');
-      }).catch(e => {
-        console.error('[FACE SOUND] Play failed:', e);
-        faceAudioRef.current = null;
-      });
-    } catch (error) {
-      console.error('[FACE SOUND] Error starting face touch sound:', error);
-      faceAudioRef.current = null;
-    }
+    if (faceWebAudioRef.current) return; // Already playing
+
+    startWebAudioLoop(faceAlertSound_ref, 'face');
   };
 
   // Stop continuous face touch alert sound
   const stopFaceTouchSound = () => {
-    console.log('[FACE SOUND] Stopping face touch sound');
-    if (faceAudioRef.current) {
-      faceAudioRef.current.pause();
-      faceAudioRef.current.currentTime = 0;
-      faceAudioRef.current = null;
-    }
     if (faceWebAudioRef.current) {
       clearInterval(faceWebAudioRef.current);
       faceWebAudioRef.current = null;
@@ -945,61 +846,16 @@ const FaceTouchDetector = () => {
 
   // Start continuous posture alert sound
   const startPostureSound = () => {
-    const { soundEnabled: soundEnabled_ref, postureAlertSound: postureAlertSound_ref, customSoundUrl: customSoundUrl_ref } = detectionStateRef.current;
-    console.log('[POSTURE SOUND] startPostureSound called, soundEnabled:', soundEnabled_ref, 'postureAlertSound:', postureAlertSound_ref);
-    if (!soundEnabled_ref) {
-      console.log('[POSTURE SOUND] Sound disabled, returning');
-      return;
-    }
-    
-    console.log('[POSTURE SOUND] Starting continuous posture sound:', postureAlertSound_ref);
-    if (postureAudioRef.current) {
-      console.log('[POSTURE SOUND] Stopping existing posture audio');
-      postureAudioRef.current.pause();
-      postureAudioRef.current = null;
-    }
-    
-    try {
-      let audioUrl;
-      if (postureAlertSound_ref === 'slap') {
-        audioUrl = '/slap.mp3';
-      } else if (postureAlertSound_ref === 'tuntun') {
-        audioUrl = '/alert.mp3';
-      } else if (postureAlertSound_ref === 'custom' && customSoundUrl_ref) {
-        audioUrl = customSoundUrl_ref;
-      } else {
-        // Fallback to Web Audio API for beep/chime
-        console.log('[POSTURE SOUND] Using Web Audio API for:', postureAlertSound_ref);
-        startWebAudioLoop(postureAlertSound_ref, 'posture');
-        return;
-      }
-      
-      console.log('[POSTURE SOUND] Creating new Audio object for:', audioUrl);
-      postureAudioRef.current = new Audio(audioUrl);
-      postureAudioRef.current.loop = true;
-      postureAudioRef.current.volume = 0.6;
-      
-      console.log('[POSTURE SOUND] Attempting to play posture sound');
-      postureAudioRef.current.play().then(() => {
-        console.log('[POSTURE SOUND] Posture sound started successfully');
-      }).catch(e => {
-        console.error('[POSTURE SOUND] Play failed:', e);
-        postureAudioRef.current = null;
-      });
-    } catch (error) {
-      console.error('[POSTURE SOUND] Error starting posture sound:', error);
-      postureAudioRef.current = null;
-    }
+    const { soundEnabled: soundEnabled_ref, postureAlertSound: postureAlertSound_ref } = detectionStateRef.current;
+    if (!soundEnabled_ref) return;
+
+    if (postureWebAudioRef.current) return; // Already playing
+
+    startWebAudioLoop(postureAlertSound_ref, 'posture');
   };
 
   // Stop continuous posture alert sound
   const stopPostureSound = () => {
-    console.log('[POSTURE SOUND] Stopping posture sound');
-    if (postureAudioRef.current) {
-      postureAudioRef.current.pause();
-      postureAudioRef.current.currentTime = 0;
-      postureAudioRef.current = null;
-    }
     if (postureWebAudioRef.current) {
       clearInterval(postureWebAudioRef.current);
       postureWebAudioRef.current = null;
@@ -1030,38 +886,25 @@ const FaceTouchDetector = () => {
     const height = canvas.height;
     
     // Key face landmarks for size calculation
-    // Using face outline points for better size measurement
     const leftFace = denormalize(faceLandmarks[234], width, height);   // Left face outline
     const rightFace = denormalize(faceLandmarks[454], width, height);  // Right face outline
     const topFace = denormalize(faceLandmarks[10], width, height);     // Top of forehead
     const bottomFace = denormalize(faceLandmarks[152], width, height); // Bottom of chin
     
-    // Calculate face width and height
     const faceWidth = pointDistance(leftFace, rightFace);
     const faceHeight = pointDistance(topFace, bottomFace);
     
-    // Use face area as size metric (more robust than individual dimensions)
-    const faceArea = faceWidth * faceHeight;
-    
-    console.log(`[FACE SIZE] Width: ${faceWidth.toFixed(1)}px, Height: ${faceHeight.toFixed(1)}px, Area: ${faceArea.toFixed(1)}px²`);
-    return faceArea;
+    return faceWidth * faceHeight;
   };
 
   // Face size calibration handler
   function handleCalibrateFaceSize() {
-    console.log('[FACE SIZE CALIBRATION] Button clicked!');
-    if (!window.currentFaceLandmarks) {
-      console.log('[FACE SIZE CALIBRATION] No face landmarks available');
-      return;
-    }
+    if (!window.currentFaceLandmarks) return;
     
     const faceSize = calculateFaceSize(window.currentFaceLandmarks);
     if (faceSize > 0) {
       setCalibratedFaceSize(faceSize);
       setIsFaceSizeCalibrated(true);
-      console.log('[FACE SIZE CALIBRATION] Baseline face size set:', faceSize);
-    } else {
-      console.log('[FACE SIZE CALIBRATION] Failed to calculate face size');
     }
   }
 
@@ -1071,7 +914,6 @@ const FaceTouchDetector = () => {
     setIsFaceSizeCalibrated(false);
     setCurrentFaceSize(0);
     setFaceSizeIncrease(0);
-    console.log('[FACE SIZE CALIBRATION] Face size calibration reset');
   }
 
   // Check for neck extension based on face size
@@ -1088,8 +930,6 @@ const FaceTouchDetector = () => {
     const increase = ((currentSize - baseline_ref) / baseline_ref) * 100;
     const isExtended = increase > threshold_ref;
     
-    console.log(`[NECK EXTENSION] Current: ${currentSize.toFixed(1)}, Baseline: ${baseline_ref.toFixed(1)}, Increase: ${increase.toFixed(1)}%, Threshold: ${threshold_ref}%, Extended: ${isExtended}`);
-    
     setCurrentFaceSize(currentSize);
     setFaceSizeIncrease(increase);
     
@@ -1098,35 +938,21 @@ const FaceTouchDetector = () => {
 
   // Calibration handler for coordinates
   function handleCalibratePosture() {
-    console.log('[CALIBRATION] Button clicked!');
     const video = videoRef.current;
-    if (!video) {
-      console.log('[CALIBRATION] No video element found');
-      return;
-    }
-    if (!window.currentPoseLandmarks) {
-      console.log('[CALIBRATION] No pose landmarks available');
-      return;
-    }
-    console.log('[CALIBRATION] Video dimensions:', video.videoWidth, video.videoHeight);
-    console.log('[CALIBRATION] Pose landmarks available:', window.currentPoseLandmarks.length);
+    if (!video || !window.currentPoseLandmarks) return;
     
     const width = video.videoWidth;
     const height = video.videoHeight;
     const keyPoints = getKeyPoints(window.currentPoseLandmarks, width, height);
-    console.log('[CALIBRATION] Key points calculated:', keyPoints);
     
     setCalibratedLandmarks(keyPoints);
     setIsCalibrated(true);
-    console.log('[CALIBRATION] Baseline set successfully:', keyPoints);
     
-    // Also calibrate face size if face is detected and neck extension is enabled
     if (window.currentFaceLandmarks && neckExtensionEnabled) {
       const faceSize = calculateFaceSize(window.currentFaceLandmarks);
       if (faceSize > 0) {
         setCalibratedFaceSize(faceSize);
         setIsFaceSizeCalibrated(true);
-        console.log('[FACE SIZE CALIBRATION] Face size baseline set alongside posture:', faceSize);
       }
     }
   }
@@ -1140,13 +966,10 @@ const FaceTouchDetector = () => {
     setMaxPostureDeviation(0);
     setPostureCount(0);
     
-    // Also reset face size calibration
     setCalibratedFaceSize(null);
     setIsFaceSizeCalibrated(false);
     setCurrentFaceSize(0);
     setFaceSizeIncrease(0);
-    
-    console.log('[FORCE RECALIBRATE] All calibration and posture state reset.');
   }
 
   // Updated posture check logic to use coordinate calibration if set
@@ -1157,100 +980,63 @@ const FaceTouchDetector = () => {
     const width = video.videoWidth;
     const height = video.videoHeight;
     
-    console.log(`[POSTURE CHECK] Video dimensions: ${width}x${height}`);
-    
-    // Key points for body posture
     const keyPoints = getKeyPoints(poseLandmarks, width, height);
-    console.log(`[POSTURE CHECK] Current keyPoints:`, keyPoints);
     
     let isBadBodyPosture = false;
     let maxDeviation = 0;
 
-    // Read from the ref to get the LATEST state
     const { isCalibrated: isCalibrated_ref, calibratedLandmarks: calibratedLandmarks_ref, allowedCoordDeviation: allowedCoordDeviation_ref } = detectionStateRef.current;
     
-    console.log(`[POSTURE CHECK] Calibration state: isCalibrated=${isCalibrated_ref}, hasLandmarks=${!!calibratedLandmarks_ref}`);
-    if (calibratedLandmarks_ref) {
-      console.log(`[POSTURE CHECK] Calibrated landmarks:`, calibratedLandmarks_ref);
-    }
-
-    // Check body posture based on coordinate calibration
     if (isCalibrated_ref && calibratedLandmarks_ref) {
       for (const key of Object.keys(keyPoints)) {
         const dist = pointDistance(keyPoints[key], calibratedLandmarks_ref[key]);
         if (dist > maxDeviation) maxDeviation = dist;
-        console.log(`[POSTURE DEBUG] ${key}: current=(${keyPoints[key].x.toFixed(1)},${keyPoints[key].y.toFixed(1)}) baseline=(${calibratedLandmarks_ref[key].x.toFixed(1)},${calibratedLandmarks_ref[key].y.toFixed(1)}) dist=${dist.toFixed(2)} allowed=${allowedCoordDeviation_ref}`);
         if (dist > allowedCoordDeviation_ref) {
           isBadBodyPosture = true;
           break;
         }
       }
-    } else {
-      console.log(`[POSTURE CHECK] No body posture calibration - skipping body posture check`);
     }
 
-    // Check neck extension based on face size (if face landmarks are available)
     let isNeckExtended = false;
     if (window.currentFaceLandmarks) {
       const { isExtended } = checkNeckExtension(window.currentFaceLandmarks);
       isNeckExtended = isExtended;
     }
 
-    // Overall bad posture is true if either body posture is bad OR neck is extended
     const isBadPosture = isBadBodyPosture || isNeckExtended;
     
-    console.log(`[POSTURE CHECK] Body posture bad: ${isBadBodyPosture}, Neck extended: ${isNeckExtended}, Overall bad: ${isBadPosture}`);
-    
     setMaxPostureDeviation(maxDeviation);
-    return {
-      isBad: isBadPosture,
-      maxDeviation
-    };
+    return { isBad: isBadPosture, maxDeviation };
   }
 
   // Handle posture detection with continuous timing and sound
   const handlePosture = (isBad, deviation) => {
-    console.log(`[HANDLE POSTURE] isBad=${isBad}, deviation=${deviation.toFixed(2)}`);
-    
     if (isBad) {
       setBadPosture(true);
       
-      // Start timing if not already started
       if (!postureStartTimeRef.current) {
-        console.log('[POSTURE] Started continuous bad posture timing');
         postureStartTimeRef.current = Date.now();
         postureAlertTriggeredRef.current = false;
       } else {
-        // Check if we've had bad posture continuously for postureHoldTime
         const badPostureDuration = (Date.now() - postureStartTimeRef.current) / 1000;
-        console.log(`[POSTURE] Continuous bad posture duration: ${badPostureDuration.toFixed(2)}s`);
         
         const { postureHoldTime: holdTime_ref } = detectionStateRef.current;
         if (badPostureDuration >= holdTime_ref && !postureAlertTriggeredRef.current) {
-          console.log(`[POSTURE] CONTINUOUS bad posture for ${badPostureDuration.toFixed(2)}s - STARTING CONTINUOUS SOUND!`);
-          
-          // Mark alert as triggered and increment counter
           postureAlertTriggeredRef.current = true;
-        setPostureCount(prev => prev + 1);
+          setPostureCount(prev => prev + 1);
           setBadPostureAlert(true);
           setTimeout(() => setBadPostureAlert(false), 1000);
           
-          // Start continuous sound
           startPostureSound();
         } else if (badPostureDuration >= holdTime_ref) {
-          // Keep sound playing if it's not already playing
-          if (!postureAudioRef.current) {
-            console.log('[POSTURE] Restarting posture sound');
+          if (!postureWebAudioRef.current) { // Check Web Audio ref
             startPostureSound();
           }
         }
       }
-      setBadPosture(false);
-      stopPostureSound();
     } else {
-      // Good posture - reset timer and stop sound
       if (postureStartTimeRef.current) {
-        console.log('[POSTURE] Good posture - resetting timer and stopping sound');
         postureStartTimeRef.current = null;
         postureAlertTriggeredRef.current = false;
       }
@@ -1274,7 +1060,6 @@ const FaceTouchDetector = () => {
     const H = video.videoHeight;
     const { threshold: THRESHOLD } = detectionStateRef.current;
 
-    // Key reference points: nose (1) and chin (152)
     const nosePoint = faceLandmarks[1];
     const chinPoint = faceLandmarks[152];
     if (!nosePoint || !chinPoint) {
@@ -1283,21 +1068,17 @@ const FaceTouchDetector = () => {
     const nosePx = { x: nosePoint.x * W, y: nosePoint.y * H };
     const chinPx = { x: chinPoint.x * W, y: chinPoint.y * H };
     
-    // Dynamic distance threshold – 60 % of face height, but never below user slider (THRESHOLD)
-    const faceHeightPx = Math.abs(chinPx.y - nosePx.y) * (100/60); // approximate full face height from nose-chin gap
+    const faceHeightPx = Math.abs(chinPx.y - nosePx.y) * (100/60);
     const dynamicThreshold = Math.max(THRESHOLD, faceHeightPx * 0.6);
 
-    // Build list of candidate hand points: all hand landmarks plus pose wrists as fallback
     const candidatePoints = [];
 
-    // 1. From MediaPipe Hands (full hand landmarks)
     if (handLandmarks && handLandmarks.length) {
       handLandmarks.forEach(lms => {
         lms.forEach(pt => pt && candidatePoints.push({ x: pt.x * W, y: pt.y * H }));
       });
     }
 
-    // 2. Fallback: pose wrists (landmarks 15 & 16) – useful when Hands loses a static hand
     if (window.currentPoseLandmarks && window.currentPoseLandmarks.length >= 17) {
       [15, 16].forEach(idx => {
         const w = window.currentPoseLandmarks[idx];
@@ -1313,7 +1094,6 @@ const FaceTouchDetector = () => {
 
     let minDist = 999;
 
-    // Check each candidate point
     for (const pt of candidatePoints) {
       const distNose = Math.hypot(nosePx.x - pt.x, nosePx.y - pt.y);
       const distChin = Math.hypot(chinPx.x - pt.x, chinPx.y - pt.y);
@@ -1322,20 +1102,17 @@ const FaceTouchDetector = () => {
       if (dist < minDist) minDist = dist;
 
       if (dist < dynamicThreshold) {
-        console.log(`[TOUCH] Hand/wrist near face: ${dist.toFixed(1)}px (dynThresh ${dynamicThreshold.toFixed(1)}px)`);
-          return { isTouching: true, minDist: dist };
+        return { isTouching: true, minDist: dist };
       }
     }
     
-    console.log(`[NO TOUCH] Min distance: ${minDist.toFixed(1)}px (need < ${dynamicThreshold.toFixed(1)}px)`);
     return { isTouching: false, minDist };
   }
 
   // Draw results on canvas (optimized for low CPU)
   const drawResults = () => {
     const canvas = canvasRef.current;
-    if (!canvas || !postureAlertActive) {
-      // Clear canvas if no alert is active
+    if (!canvas || (!postureAlertActive && !faceAlertActive)) {
       if (canvas) {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1352,12 +1129,10 @@ const FaceTouchDetector = () => {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Mirror the canvas context to match the video feed
     ctx.save();
     ctx.scale(-1, 1);
     ctx.translate(-canvas.width, 0);
 
-    // Scaling logic
     const videoAspect = video.videoWidth / video.videoHeight;
     const canvasAspect = canvas.width / canvas.height;
     let drawWidth, drawHeight, offsetX, offsetY;
@@ -1379,50 +1154,47 @@ const FaceTouchDetector = () => {
 
     const isNeckExtended = faceSizeIncrease > detectionStateRef.current.faceSizeThreshold;
 
-    if (isNeckExtended && window.currentFaceLandmarks) {
-      // Draw neck extension guidance
-      const nose = window.currentFaceLandmarks[1];
-      if (nose) {
-        const p = toCanvas(nose);
-        const baseline = detectionStateRef.current.calibratedFaceSize || 50;
-        const scale = (baseline * Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight)) / 2;
-        const radiusGood = scale;
-        const radiusCurrent = radiusGood * (1 + faceSizeIncrease / 100);
-        ctx.strokeStyle = '#10b981'; // Green for good
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radiusGood, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.strokeStyle = '#ef4444'; // Red for current
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, radiusCurrent, 0, 2 * Math.PI);
-        ctx.stroke();
+    if (postureAlertActive) {
+      if (isNeckExtended && window.currentFaceLandmarks) {
+        const nose = window.currentFaceLandmarks[1];
+        if (nose) {
+          const p = toCanvas(nose);
+          const baseline = detectionStateRef.current.calibratedFaceSize || 50;
+          const scale = (baseline * Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight)) / 2;
+          const radiusGood = scale;
+          const radiusCurrent = radiusGood * (1 + faceSizeIncrease / 100);
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, radiusGood, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.strokeStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, radiusCurrent, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      } else if (detectionStateRef.current.calibratedLandmarks && window.currentPoseLandmarks) {
+        const baseline = detectionStateRef.current.calibratedLandmarks;
+        const currentKeys = getKeyPoints(window.currentPoseLandmarks, video.videoWidth, video.videoHeight);
+        
+        ctx.fillStyle = '#10b981';
+        Object.values(baseline).forEach(pt => {
+          const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+
+        ctx.fillStyle = '#ef4444';
+        Object.values(currentKeys).forEach(pt => {
+          const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+          ctx.fill();
+        });
       }
-    } else if (detectionStateRef.current.calibratedLandmarks && window.currentPoseLandmarks) {
-      // Draw body posture guidance
-      const baseline = detectionStateRef.current.calibratedLandmarks;
-      const currentKeys = getKeyPoints(window.currentPoseLandmarks, video.videoWidth, video.videoHeight);
-      
-      // Draw baseline points (green)
-      ctx.fillStyle = '#10b981';
-      Object.values(baseline).forEach(pt => {
-        const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
-        ctx.fill();
-      });
-
-      // Draw current points (red)
-      ctx.fillStyle = '#ef4444';
-      Object.values(currentKeys).forEach(pt => {
-        const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
-        ctx.fill();
-      });
     }
-
-    // Restore the context to its original state
+    
     ctx.restore();
   };
 
@@ -1438,23 +1210,17 @@ const FaceTouchDetector = () => {
 
   // Frame skipping for performance
   const frameCountRef = useRef(0);
-  const PROCESS_EVERY_N_FRAMES = 2; // Back to every 2nd frame for better detection
-  const DRAW_EVERY_N_FRAMES = 3; // Keep drawing optimization
+  const PROCESS_EVERY_N_FRAMES = 2;
   const lastProcessTimeRef = useRef(0);
-  const IDLE_PROCESSING_INTERVAL = 500; // Reduced from 1000ms for better responsiveness
+  const IDLE_PROCESSING_INTERVAL = 500;
 
   // Pose detection results
   const onPoseResults = (results) => {
-    console.log('[POSE RESULTS] Function called with results:', !!results, 'poseLandmarks:', results?.poseLandmarks?.length);
-    console.log('[POSE RESULTS] Calibration status - isCalibrated:', detectionStateRef.current.isCalibrated, 'calibratedLandmarks:', !!detectionStateRef.current.calibratedLandmarks);
-    
     if (results.poseLandmarks && results.poseLandmarks.length > 0) {
       setPoseDetected(true);
       window.currentPoseLandmarks = results.poseLandmarks;
       
-      // Use the proper checkPosture function
       const { isBad, maxDeviation } = checkPosture(results.poseLandmarks);
-      console.log(`[POSTURE CHECK] maxDeviation=${maxDeviation.toFixed(2)}, allowed=${detectionStateRef.current.allowedCoordDeviation}, isBad=${isBad}, isCalibrated=${detectionStateRef.current.isCalibrated}, holdTime=${detectionStateRef.current.postureHoldTime}`);
       handlePosture(isBad, maxDeviation);
     } else {
       setPoseDetected(false);
@@ -1469,14 +1235,11 @@ const FaceTouchDetector = () => {
   const onFaceResults = (results) => {
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
       setFaceDetected(true);
-      // Store face landmarks for distance calculation
       window.currentFaceLandmarks = results.multiFaceLandmarks[0];
       
-      // Calculate face size for neck extension detection
       const faceSize = calculateFaceSize(results.multiFaceLandmarks[0]);
       setCurrentFaceSize(faceSize);
       
-      // Check neck extension if calibrated
       const { neckExtensionEnabled, calibratedFaceSize, isFaceSizeCalibrated } = detectionStateRef.current;
       if (neckExtensionEnabled && isFaceSizeCalibrated && calibratedFaceSize) {
         const increase = ((faceSize - calibratedFaceSize) / calibratedFaceSize) * 100;
@@ -1507,40 +1270,28 @@ const FaceTouchDetector = () => {
         if (isTouching) {
           setIsTouchingFace(true);
           
-          // Start timing if not already started
           if (!faceStartTimeRef.current) {
-            console.log('[FACE TOUCH] Started continuous touch timing');
             faceStartTimeRef.current = Date.now();
             faceAlertTriggeredRef.current = false;
           } else {
-            // Check if we've been touching continuously for faceTouchHoldTime
             const touchDuration = (Date.now() - faceStartTimeRef.current) / 1000;
-            console.log(`[FACE TOUCH] Continuous touch duration: ${touchDuration.toFixed(2)}s`);
             
             const { faceTouchHoldTime: holdTime_ref } = detectionStateRef.current;
             if (touchDuration >= holdTime_ref && !faceAlertTriggeredRef.current) {
-              console.log(`[FACE TOUCH] CONTINUOUS for ${touchDuration.toFixed(2)}s - STARTING CONTINUOUS SLAP SOUND!`);
-              
-              // Mark alert as triggered and increment counter
               faceAlertTriggeredRef.current = true;
               setTouchCount(prev => prev + 1);
               setFaceTouchAlert(true);
               setTimeout(() => setFaceTouchAlert(false), 1000);
               
-              // Start continuous slap sound
               startFaceTouchSound();
             } else if (touchDuration >= holdTime_ref) {
-              // Keep sound playing if it's not already playing
-              if (!faceAudioRef.current) {
-                console.log('[FACE TOUCH] Restarting face touch sound');
+              if (!faceWebAudioRef.current) { // Check Web Audio ref
                 startFaceTouchSound();
               }
             }
-      }
-    } else {
-          // Not touching - reset timer and stop sound
+          }
+        } else {
           if (faceStartTimeRef.current) {
-            console.log('[FACE TOUCH] Touch broken - resetting timer and stopping sound');
             faceStartTimeRef.current = null;
             faceAlertTriggeredRef.current = false;
           }
@@ -1549,9 +1300,7 @@ const FaceTouchDetector = () => {
         }
       }
     } else {
-      // No hands detected - reset timer and stop sound
       if (faceStartTimeRef.current) {
-        console.log('[FACE TOUCH] No hands - resetting timer and stopping sound');
         faceStartTimeRef.current = null;
         faceAlertTriggeredRef.current = false;
       }
@@ -1584,9 +1333,7 @@ const FaceTouchDetector = () => {
     try {
       setIsLoading(true);
       setDebugInfo('Loading MediaPipe scripts...');
-      console.log('Starting MediaPipe initialization...');
       
-      // Load MediaPipe scripts from CDN
       const scripts = [
         'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js',
         'https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js',
@@ -1596,128 +1343,57 @@ const FaceTouchDetector = () => {
         'https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js'
       ];
 
-      setDebugInfo('Loading scripts from CDN...');
       for (const script of scripts) {
-        console.log('Loading script:', script);
         await loadMediaPipeScript(script);
       }
       
-      console.log('All MediaPipe scripts loaded');
-      setDebugInfo('Scripts loaded, initializing models...');
-      
-      // Wait a bit for scripts to be ready
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if MediaPipe is available
       if (!window.FaceMesh || !window.Hands || !window.Pose) {
         throw new Error('MediaPipe classes not available after loading scripts');
       }
 
-      // Initialize Pose first
-      setDebugInfo('Initializing Pose...');
-      console.log('Creating Pose instance...');
-      try {
-        poseRef.current = new window.Pose({
-          locateFile: (file) => {
-            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-            console.log('Loading Pose file:', file, '→', url);
-            return url;
-          }
-        });
+      poseRef.current = new window.Pose({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+      });
+      poseRef.current.setOptions({
+        modelComplexity: 0,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+      poseRef.current.onResults(onPoseResults);
 
-        console.log('Setting Pose options...');
-        poseRef.current.setOptions({
-          modelComplexity: 0,
-          smoothLandmarks: true,
-          enableSegmentation: false,
-          smoothSegmentation: false,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.6
-        });
-
-        poseRef.current.onResults(onPoseResults);
-        console.log('Pose model initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize Pose model:', error);
-        throw error;
-      }
-
-      // Wait a bit before initializing other models
-      setDebugInfo('Waiting before initializing other models...');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Initialize Hands
-      setDebugInfo('Initializing Hands...');
-      console.log('Creating Hands instance...');
-      try {
-        handsRef.current = new window.Hands({
-          locateFile: (file) => {
-            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-            console.log('Loading Hands file:', file, '→', url);
-            return url;
-          }
-        });
+      handsRef.current = new window.Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      handsRef.current.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 0,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      handsRef.current.onResults(onHandsResults);
 
-        console.log('Setting Hands options...');
-        handsRef.current.setOptions({
-          maxNumHands: 2, // Allow both hands for better face touch detection
-          modelComplexity: 0,
-          minDetectionConfidence: 0.5, // Lowered from 0.6 for better detection
-          minTrackingConfidence: 0.5   // Lowered from 0.6 for better tracking
-        });
-
-        handsRef.current.onResults(onHandsResults);
-        console.log('Hands model initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize Hands model:', error);
-        throw error;
-      }
-
-      // Wait a bit before initializing Face Mesh
-      setDebugInfo('Waiting before initializing Face Mesh...');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Initialize Face Mesh
-      setDebugInfo('Initializing Face Mesh...');
-      console.log('Creating Face Mesh instance...');
-      try {
-        faceMeshRef.current = new window.FaceMesh({
-          locateFile: (file) => {
-            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-            console.log('Loading Face Mesh file:', file, '→', url);
-            return url;
-          }
-        });
+      faceMeshRef.current = new window.FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+      });
+      faceMeshRef.current.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: false,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+      faceMeshRef.current.onResults(onFaceResults);
 
-        console.log('Setting Face Mesh options...');
-        faceMeshRef.current.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: false,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.6
-        });
-
-        // Set up result handlers
-        setDebugInfo('Setting up result handlers...');
-        console.log('Setting up result handlers...');
-        faceMeshRef.current.onResults(onFaceResults);
-        console.log('Face Mesh model initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize Face Mesh model:', error);
-        throw error;
-      }
-
-      console.log('MediaPipe models initialized successfully');
-      setDebugInfo('MediaPipe models loaded successfully');
       setIsLoading(false);
       return true;
     } catch (error) {
       console.error('Failed to initialize MediaPipe:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
       setDebugInfo(`MediaPipe error: ${error.message}`);
       setIsLoading(false);
       return false;
@@ -1728,15 +1404,10 @@ const FaceTouchDetector = () => {
   const requestCamera = async () => {
     try {
       setDebugInfo('Requesting camera access...');
-      console.log('Requesting camera access...');
       
-      // Wait a bit to ensure video element is mounted
       await new Promise(resolve => setTimeout(resolve, 100));
       
       if (!videoRef.current) {
-        console.error('Video ref is null - element not mounted yet');
-        setDebugInfo('Video element not mounted yet, retrying...');
-        // Try again after a short delay
         await new Promise(resolve => setTimeout(resolve, 500));
         if (!videoRef.current) {
           setDebugInfo('Video element still not found');
@@ -1746,20 +1417,16 @@ const FaceTouchDetector = () => {
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          width: 320,  // Increased resolution for better detection
-          height: 240, // Increased from 180 for better detection
+          width: 320,
+          height: 240,
           facingMode: 'user',
-          frameRate: { ideal: 15, max: 20 } // Allow up to 20fps for better detection
+          frameRate: { ideal: 15, max: 20 }
         }
       });
-      
-      console.log('Camera stream obtained:', stream);
-      setDebugInfo('Camera stream obtained');
       
       videoRef.current.srcObject = stream;
       streamRef.current = stream;
       
-      // Wait for video to be ready
       await new Promise((resolve) => {
         const video = videoRef.current;
         if (!video) {
@@ -1768,15 +1435,8 @@ const FaceTouchDetector = () => {
         }
         
         video.onloadedmetadata = () => {
-          console.log('Video metadata loaded, starting playback');
-          setDebugInfo('Video ready, starting playback');
-          video.play().then(() => {
-            console.log('Video playing successfully');
-            setDebugInfo('Video playing successfully');
-            resolve();
-          }).catch(err => {
+          video.play().then(resolve).catch(err => {
             console.error('Error playing video:', err);
-            setDebugInfo(`Video play error: ${err.message}`);
             resolve();
           });
         };
@@ -1793,179 +1453,113 @@ const FaceTouchDetector = () => {
   };
 
   const initAudio = () => {
-    // This function can be expanded to initialize or resume the AudioContext
-    // For now, its main purpose is to be called from a user interaction handler
-    // to unlock the AudioContext in browsers with strict autoplay policies.
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       audioContextRef.current.resume();
-      console.log('AudioContext resumed on user interaction.');
     } else if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('AudioContext created on user interaction.');
     }
   };
 
   // Start detection
   const startDetection = async () => {
-    // Ensure audio is unlocked as soon as the user starts detection
     initAudio();
 
     if (!videoRef.current || !videoRef.current.srcObject) {
-      console.log('No video stream, requesting camera...');
-      // Ensure audio is unlocked when the user grants camera permission
       initAudio();
       const success = await requestCamera();
       if (!success) {
-        setDebugInfo('Camera permission failed');
         return;
       }
     }
     
-    // Require authentication before starting any detection
     if (!isAuthenticated) {
       setShowAuthModal(true);
       setAuthMode('register');
       return;
     }
     
-    // Check if user has trial/premium access
     if (!isTrialActive && !hasLifetimePlan) {
-      // If trial has expired, show upgrade message
       if (isTrialExpired) {
         setShowUpgradeModal(true);
         return;
       }
       
-      // If trial hasn't been started yet, automatically start it
       try {
         await startTrialAPI();
-        // The trial state will be updated by the API response
-        // Continue with detection after trial starts
       } catch (error) {
-        console.error('Failed to start trial:', error);
-        // The startTrialAPI function will handle the specific error cases
         return;
       }
     }
     
-    // Resume audio context on user interaction
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      console.log('[START DETECTION] Resuming suspended audio context');
       await audioContextRef.current.resume();
     }
     
-    // Ensure audio context is ready
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-      console.log('[START DETECTION] Creating audio context');
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     
-    console.log('[START DETECTION] Audio context state:', audioContextRef.current.state);
-    
     try {
-      console.log('Starting detection...');
-      setDebugInfo('Starting detection...');
-
-      setDebugInfo('Checking MediaPipe models...');
       const modelsReady = faceMeshRef.current && handsRef.current && poseRef.current;
-      console.log('Models ready:', modelsReady, {
-        faceMesh: !!faceMeshRef.current,
-        hands: !!handsRef.current,
-        pose: !!poseRef.current
-      });
       
       if (!modelsReady) {
-        setDebugInfo('Loading MediaPipe models...');
         const success = await initializeMediaPipe();
-        if (!success) {
-          setDebugInfo('MediaPipe initialization failed');
-          return;
-        }
+        if (!success) return;
       }
       
-      setDebugInfo('Setting up detection...');
       setIsActive(true);
       setSessionStart(new Date());
       setTouchCount(0);
       setCurrentTouchStart(null);
       setIsTouchingFace(false);
       
-      // Initialize camera for MediaPipe (original, robust approach)
       if (videoRef.current && !cameraRef.current) {
-        setDebugInfo('Initializing MediaPipe camera...');
-        console.log('Initializing MediaPipe camera...');
         try {
           let modelToggle = 0;
-          // Use MediaPipe Camera class for robust video/model processing
           cameraRef.current = new window.Camera(videoRef.current, {
             onFrame: async () => {
               if (faceMeshRef.current && handsRef.current && poseRef.current && videoRef.current) {
                 try {
-                  // Frame skipping for performance
                   frameCountRef.current++;
-                  if (frameCountRef.current % PROCESS_EVERY_N_FRAMES !== 0) {
-                    return; // Skip this frame
-                  }
+                  if (frameCountRef.current % PROCESS_EVERY_N_FRAMES !== 0) return;
                   
-                  // Smart processing: reduce frequency when no alerts are active
                   const now = Date.now();
                   const isIdle = !faceStartTimeRef.current && !postureStartTimeRef.current && !faceDetected && handsDetected === 0;
-                  if (isIdle && (now - lastProcessTimeRef.current) < IDLE_PROCESSING_INTERVAL) {
-                    return; // Skip processing when truly idle (no face, no hands, no alerts)
-                  }
+                  if (isIdle && (now - lastProcessTimeRef.current) < IDLE_PROCESSING_INTERVAL) return;
                   lastProcessTimeRef.current = now;
                   
-                  // Rebalanced model rotation - prioritize face touch detection
-                  modelToggle = (modelToggle + 1) % 8; // 8-frame cycle for better balance
+                  modelToggle = (modelToggle + 1) % 8;
                   
                   if (modelToggle === 0 || modelToggle === 4) {
-                    // Pose detection 25% of processed frames (2 out of 8)
                     await poseRef.current.send({ image: videoRef.current });
                   } else if (modelToggle === 1 || modelToggle === 2 || modelToggle === 5 || modelToggle === 6) {
-                    // Hands detection 50% of processed frames (4 out of 8) - prioritized for face touch
                     await handsRef.current.send({ image: videoRef.current });
                   } else if (modelToggle === 3 || modelToggle === 7) {
-                    // Face detection 25% of processed frames (2 out of 8)
                     await faceMeshRef.current.send({ image: videoRef.current });
                   }
-                  // Skip processing on other frames (50% of frames skipped entirely)
                 } catch (error) {
                   console.warn('Error processing frame:', error);
                 }
-              } else {
-                console.log('Models not ready:', {
-                  faceMesh: !!faceMeshRef.current,
-                  hands: !!handsRef.current,
-                  pose: !!poseRef.current,
-                  video: !!videoRef.current
-                });
               }
             },
-            width: 320,  // Increased resolution for better detection
+            width: 320,
             height: 240
           });
           await cameraRef.current.start();
-          setDebugInfo('Detection active - MediaPipe running');
-          console.log('MediaPipe camera started successfully');
         } catch (cameraError) {
           console.error('Camera initialization error:', cameraError);
-          setDebugInfo(`Camera init error: ${cameraError.message}`);
           setIsActive(false);
           return;
         }
       } else if (cameraRef.current) {
-        setDebugInfo('Restarting existing camera...');
         await cameraRef.current.start();
-        setDebugInfo('Detection active - MediaPipe restarted');
       } else {
-        setDebugInfo('Error: No video element found');
         setIsActive(false);
         return;
       }
       
     } catch (error) {
       console.error('Error starting detection:', error);
-      setDebugInfo(`Detection error: ${error.message}`);
       setIsActive(false);
       alert('Failed to start detection. Please check your camera and try again.');
     }
@@ -1973,40 +1567,27 @@ const FaceTouchDetector = () => {
 
   // Stop detection
   const stopDetection = () => {
-    console.log('Stopping detection...');
     setIsActive(false);
     
-    // Stop all continuous sounds
     stopFaceTouchSound();
     stopPostureSound();
     
-    // Reset detection state
-    setDebugInfo('Detection stopped');
     setIsTouchingFace(false);
     setBadPosture(false);
     
-    // Clear timers
     faceStartTimeRef.current = null;
     postureStartTimeRef.current = null;
     faceAlertTriggeredRef.current = false;
     postureAlertTriggeredRef.current = false;
     
-    // Stop camera and cleanup
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-    if (cameraRef.current) {
-      cameraRef.current.stop();
-    }
-    if (poseRef.current) {
-      poseRef.current.close();
-    }
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    if (cameraRef.current) cameraRef.current.stop();
+    if (poseRef.current) poseRef.current.close();
   };
 
   // Initialize video element
   useEffect(() => {
-    console.log('Component mounted, video ref:', videoRef.current);
-    setDebugInfo('Component loaded');
+    // Empty
   }, []);
 
   // Keep-alive mechanism for background processing
@@ -2015,28 +1596,19 @@ const FaceTouchDetector = () => {
   
   // Cleanup
   useEffect(() => {
-    // Aggressive background processing to prevent browser throttling
     const handleVisibilityChange = () => {
       const isVisible = !document.hidden;
       setIsTabVisible(isVisible);
       
       if (isVisible) {
-        setDebugInfo('Tab active - normal processing');
-        
-        // Clear keep-alive when tab is visible
         if (keepAliveIntervalRef.current) {
           clearInterval(keepAliveIntervalRef.current);
           keepAliveIntervalRef.current = null;
         }
       } else {
-        setDebugInfo('Running in background - forcing active processing');
-        
-        // Force browser to keep processing with multiple keep-alive techniques
         keepAliveIntervalRef.current = setInterval(() => {
-          // Small operations to prevent browser from throttling
           if (isActive && cameraRef.current && videoRef.current) {
             try {
-              // 1. Force a small canvas operation to keep GPU active
               const canvas = canvasRef.current;
               if (canvas) {
                 const ctx = canvas.getContext('2d');
@@ -2044,7 +1616,6 @@ const FaceTouchDetector = () => {
                 ctx.fillRect(0, 0, 1, 1);
               }
               
-              // 2. Silent audio trick to prevent throttling (very common technique)
               if (!backgroundAudioRef.current && audioContextRef.current) {
                 const context = audioContextRef.current;
                 if (context.state !== 'suspended') {
@@ -2052,29 +1623,18 @@ const FaceTouchDetector = () => {
                   const gainNode = context.createGain();
                   oscillator.connect(gainNode);
                   gainNode.connect(context.destination);
-                  gainNode.gain.value = 0; // Silent
-                  oscillator.frequency.value = 1; // Very low frequency
+                  gainNode.gain.value = 0;
+                  oscillator.frequency.value = 1;
                   oscillator.start();
                   backgroundAudioRef.current = { oscillator, gainNode };
                 }
               }
-              
-              // 3. Force DOM updates to keep main thread active
-              const debugElement = document.querySelector('.text-blue-600');
-              if (debugElement) {
-                debugElement.style.opacity = debugElement.style.opacity === '0.99' ? '1' : '0.99';
-              }
-              
-              // Log activity to prove we're running
-              console.log('Background heartbeat:', new Date().toLocaleTimeString());
             } catch (e) {
               // Ignore errors
             }
           }
-        }, 500); // More frequent (every 500ms) to aggressively prevent throttling
+        }, 500);
       }
-      
-      // Don't stop the camera - just adjust processing frequency
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -2082,10 +1642,7 @@ const FaceTouchDetector = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       
-      // Clear keep-alive interval and background audio
-      if (keepAliveIntervalRef.current) {
-        clearInterval(keepAliveIntervalRef.current);
-      }
+      if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
       
       if (backgroundAudioRef.current) {
         try {
@@ -2094,34 +1651,23 @@ const FaceTouchDetector = () => {
           backgroundAudioRef.current.gainNode.disconnect();
           backgroundAudioRef.current = null;
         } catch (e) {
-          // Ignore cleanup errors
+          // Ignore
         }
       }
       
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
       if (audioContextRef.current) {
         try {
-          if (audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-          }
+          if (audioContextRef.current.state !== 'closed') audioContextRef.current.close();
         } catch (error) {
-          // Ignore AudioContext close errors
-          console.log('AudioContext close error (ignored):', error.message);
+          // Ignore
         } finally {
           audioContextRef.current = null;
         }
       }
-      if (cameraRef.current) {
-        cameraRef.current.stop();
-      }
-      if (poseRef.current) {
-        poseRef.current.close();
-      }
+      if (cameraRef.current) cameraRef.current.stop();
+      if (poseRef.current) poseRef.current.close();
     };
   }, [isActive]);
 
@@ -2133,35 +1679,20 @@ const FaceTouchDetector = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Add debug logs for state changes
   useEffect(() => {
-    console.log('[DEBUG] isTouchingFace changed:', isTouchingFace);
-  }, [isTouchingFace]);
-  useEffect(() => {
-    console.log('[DEBUG] badPosture changed:', badPosture);
-  }, [badPosture]);
-
-  useEffect(() => {
-    // Only create AudioContext if it doesn't exist
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     return () => {
-      // Cleanup timer references
       faceStartTimeRef.current = null;
       postureStartTimeRef.current = null;
-      // Stop continuous sounds first
       stopFaceTouchSound();
       stopPostureSound();
-      // Cleanup audio context safely
       if (audioContextRef.current) {
         try {
-          if (audioContextRef.current.state !== 'closed') {
-            audioContextRef.current.close();
-          }
+          if (audioContextRef.current.state !== 'closed') audioContextRef.current.close();
         } catch (error) {
-          // Ignore errors when closing AudioContext (it might already be closed)
-          console.log('AudioContext cleanup error (ignored):', error.message);
+          // Ignore
         } finally {
           audioContextRef.current = null;
         }
@@ -2172,7 +1703,6 @@ const FaceTouchDetector = () => {
   // Start looping Web Audio sound (for beep/chime)
   const startWebAudioLoop = (soundType, alertType) => {
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-      console.log('[WEB AUDIO] AudioContext not ready, creating now.');
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     const context = audioContextRef.current;
@@ -2182,25 +1712,11 @@ const FaceTouchDetector = () => {
     
     const webAudioRef = alertType === 'face' ? faceWebAudioRef : postureWebAudioRef;
     
-    // Stop existing loop
-    if (webAudioRef.current) {
-      clearInterval(webAudioRef.current);
-      webAudioRef.current = null;
-    }
+    if (webAudioRef.current) clearInterval(webAudioRef.current);
     
     const playSound = () => {
       try {
-        if (soundType === 'beep') {
-          const oscillator = context.createOscillator();
-          const gainNode = context.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(context.destination);
-          oscillator.frequency.setValueAtTime(800, context.currentTime);
-          oscillator.type = 'sine';
-          gainNode.gain.setValueAtTime(0.3, context.currentTime);
-          oscillator.start(context.currentTime);
-          oscillator.stop(context.currentTime + 0.15);
-        } else if (soundType === 'chime') {
+        if (soundType === 'chime') {
           const oscillator1 = context.createOscillator();
           const oscillator2 = context.createOscillator();
           const gainNode = context.createGain();
@@ -2227,10 +1743,8 @@ const FaceTouchDetector = () => {
       }
     };
     
-    // Play immediately and then loop
     playSound();
-    webAudioRef.current = setInterval(playSound, soundType === 'chime' ? 1000 : 500);
-    console.log(`[WEB AUDIO] Started looping ${soundType} for ${alertType}`);
+    webAudioRef.current = setInterval(playSound, 1000);
   };
 
   // UI Logic for displaying trial status
@@ -2712,6 +2226,52 @@ const FaceTouchDetector = () => {
                     </p>
                   </div>
                   
+                  <div className="border-t border-gray-600/50 pt-4">
+                    <h4 className="text-lg font-semibold text-white mb-4">Sound Settings</h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <label htmlFor="sound-enabled" className="text-sm font-medium text-gray-300">
+                        Enable Sound Alerts
+                      </label>
+                      <input
+                        type="checkbox"
+                        id="sound-enabled"
+                        checked={soundEnabled}
+                        onChange={(e) => setSoundEnabled(e.target.checked)}
+                        className="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                      />
+                    </div>
+
+                    {/* Simplified Sound Selectors */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Face Touch Alert Sound</label>
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={faceAlertSound}
+                            onChange={(e) => setFaceAlertSound(e.target.value)}
+                            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="chime">Chime</option>
+                          </select>
+                          <button onClick={() => playAlert('face')} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Test</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Bad Posture Alert Sound</label>
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={postureAlertSound}
+                            onChange={(e) => setPostureAlertSound(e.target.value)}
+                            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="chime">Chime</option>
+                          </select>
+                          <button onClick={() => playAlert('posture')} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Test</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Neck Extension Detection Settings */}
                   <div className="border-t border-gray-600/50 pt-4">
                     <div className="flex items-center space-x-3 mb-4">
@@ -2765,222 +2325,44 @@ const FaceTouchDetector = () => {
                             </div>
                           </div>
                         )}
-
-                        {!isFaceSizeCalibrated && faceDetected && (
-                          <div className="bg-yellow-600/20 border border-yellow-500/30 p-3 rounded-lg">
-                            <p className="text-yellow-400 text-sm">
-                              Face size not calibrated. Click "Set Good Posture" button to calibrate.
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
-
-                  <div className="border-t border-gray-600/50 pt-4">
-                    <div className="flex items-center space-x-3 mb-4">
-                    <input
-                        type="checkbox"
-                        id="sound-enabled"
-                        checked={soundEnabled}
-                        onChange={(e) => setSoundEnabled(e.target.checked)}
-                        className="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                      />
-                      <label htmlFor="sound-enabled" className="text-sm font-medium text-gray-300">
-                        Enable Sound Alerts
-                    </label>
-                  </div>
-
-                    <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Face Touch Alert Sound
-                      {isPremiumFeature('customSounds') && (
-                        <Crown className="w-4 h-4 inline ml-2 text-yellow-400" title="Premium Feature" />
-                      )}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={faceAlertSound}
-                        onChange={e => {
-                          if (e.target.value === 'custom' && showPremiumUpgrade('Custom Sounds')) {
-                            return;
-                          }
-                          setFaceAlertSound(e.target.value);
-                        }}
-                        className="bg-gray-700 border border-gray-600 text-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="slap">Slap</option>
-                        <option value="tuntun">TUNTUN SAHURRRRRRR</option>
-                        <option value="beep">Beep</option>
-                        <option value="chime">Chime</option>
-                        <option value="custom" disabled={isPremiumFeature('customSounds')}>
-                          Custom {isPremiumFeature('customSounds') ? '(Premium)' : ''}
-                        </option>
-                      </select>
-                    <button
-                        type="button"
-                        onClick={() => {
-                          // Test face touch sound
-                          if (faceAlertSound === 'slap' || faceAlertSound === 'tuntun') {
-                            const audio = new Audio(faceAlertSound === 'slap' ? '/slap.mp3' : '/alert.mp4');
-                            audio.volume = 0.6;
-                            audio.play().catch(e => console.log('Test failed:', e));
-                          } else {
-                            playAlert();
-                          }
-                        }}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-                      >
-                        Test
-                    </button>
-                    </div>
-                    {faceAlertSound === 'custom' && (
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        className="mt-2 block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                        onChange={e => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            const url = URL.createObjectURL(file);
-                            setCustomSoundUrl(url);
-                          }
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Bad Posture Alert Sound</label>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={postureAlertSound}
-                        onChange={e => setPostureAlertSound(e.target.value)}
-                        className="bg-gray-700 border border-gray-600 text-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="tuntun">TUNTUN SAHURRRRRRR</option>
-                        <option value="slap">Slap</option>
-                        <option value="beep">Beep</option>
-                        <option value="chime">Chime</option>
-                        <option value="custom">Custom</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Test posture sound
-                          if (postureAlertSound === 'slap' || postureAlertSound === 'tuntun') {
-                            const audio = new Audio(postureAlertSound === 'slap' ? '/slap.mp3' : '/alert.mp4');
-                            audio.volume = 0.6;
-                            audio.play().catch(e => console.log('Test failed:', e));
-                          } else {
-                            playAlert();
-                          }
-                        }}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-                      >
-                        Test
-                      </button>
-                    </div>
-                    {postureAlertSound === 'custom' && (
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        className="mt-2 block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                        onChange={e => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            const url = URL.createObjectURL(file);
-                            setCustomSoundUrl(url);
-                          }
-                        }}
-                      />
-                    )}
-                  </div>
-
-                    {/* Show calibration info if calibrated */}
-                    {isCalibrated && calibratedLandmarks && (
-                      <div className="border-t border-gray-600/50 pt-4">
-                        <h4 className="text-sm font-medium text-gray-300 mb-2">Calibration Info</h4>
-                        <div className="text-xs text-gray-400 space-y-1">
-                          <div>Baseline Nose: ({calibratedLandmarks.nose.x.toFixed(1)}, {calibratedLandmarks.nose.y.toFixed(1)})</div>
-                          <div>Baseline Left Shoulder: ({calibratedLandmarks.leftShoulder.x.toFixed(1)}, {calibratedLandmarks.leftShoulder.y.toFixed(1)})</div>
-                          <div>Baseline Right Shoulder: ({calibratedLandmarks.rightShoulder.x.toFixed(1)}, {calibratedLandmarks.rightShoulder.y.toFixed(1)})</div>
-                          <div>Baseline Neck: ({calibratedLandmarks.neck.x.toFixed(1)}, {calibratedLandmarks.neck.y.toFixed(1)})</div>
-                          <button 
-                            className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors" 
-                            onClick={handleForceRecalibrate}
-                          >
-                            Force Recalibrate
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isActive && !isCalibrated && (
-              <div className="lg:col-span-3 flex justify-center">
-                <div className="px-6 py-3 bg-yellow-600/20 border border-yellow-500/30 text-yellow-400 rounded-xl text-sm font-medium">
-                  Please calibrate your good posture for accurate detection!
                 </div>
               </div>
             )}
           </div>
         </section>
-
-
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-800">
-        <div className="container mx-auto px-6 py-8 text-center text-gray-500">
-          <p>&copy; 2025 Ascends. All rights reserved.</p>
-        </div>
-      </footer>
-
-      {/* Authentication Modal */}
-      {showAuthModal && (
-        <AuthModal 
-          isOpen={showAuthModal}
-          onClose={() => {
-            setShowAuthModal(false);
-            setEmailVerificationSent(false);
-          }}
-          mode={authMode}
-          onModeChange={setAuthMode}
-          onLogin={login}
-          onRegister={register}
-          emailVerificationSent={emailVerificationSent}
-          setEmailVerificationSent={setEmailVerificationSent}
-        />
-      )}
-
-      {/* Professional Upgrade Modal */}
-      <UpgradeModal 
+      {/* Modals */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onLogin={login}
+        onRegister={register}
+        emailVerificationSent={emailVerificationSent}
+        setEmailVerificationSent={setEmailVerificationSent}
+      />
+      <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        onUpgrade={() => {
-          setShowUpgradeModal(false);
-                    window.location.href = '/pricing';
-        }}
+        onUpgrade={() => navigate('/pricing')}
       />
     </div>
   );
 };
 
-// Main App component with routing
 const App = () => {
   return (
-    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <Router>
       <Routes>
         <Route path="/" element={<FaceTouchDetector />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/success" element={<SuccessPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/cancel" element={<FaceTouchDetector />} />
-        <Route path="/login" element={<FaceTouchDetector />} />
       </Routes>
     </Router>
   );
