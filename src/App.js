@@ -1350,6 +1350,11 @@ const FaceTouchDetector = () => {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Mirror the canvas context to match the video feed
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.translate(-canvas.width, 0);
+
     // Scaling logic
     const videoAspect = video.videoWidth / video.videoHeight;
     const canvasAspect = canvas.width / canvas.height;
@@ -1414,6 +1419,9 @@ const FaceTouchDetector = () => {
         ctx.fill();
       });
     }
+
+    // Restore the context to its original state
+    ctx.restore();
   };
 
   // Timer refs for 2-second delays
@@ -1784,6 +1792,20 @@ const FaceTouchDetector = () => {
 
   // Start detection
   const startDetection = async () => {
+    // Ensure audio is unlocked as soon as the user starts detection
+    initAudio();
+
+    if (!videoRef.current || !videoRef.current.srcObject) {
+      console.log('No video stream, requesting camera...');
+      // Ensure audio is unlocked when the user grants camera permission
+      initAudio();
+      const success = await requestCamera();
+      if (!success) {
+        setDebugInfo('Camera permission failed');
+        return;
+      }
+    }
+    
     // Require authentication before starting any detection
     if (!isAuthenticated) {
       setShowAuthModal(true);
@@ -1825,17 +1847,6 @@ const FaceTouchDetector = () => {
     
     console.log('[START DETECTION] Audio context state:', audioContextRef.current.state);
     
-    if (!videoRef.current || !videoRef.current.srcObject) {
-      console.log('No video stream, requesting camera...');
-      // Ensure audio is unlocked when the user grants camera permission
-      initAudio();
-      const success = await requestCamera();
-      if (!success) {
-        setDebugInfo('Camera permission failed');
-        return;
-      }
-    }
-
     try {
       console.log('Starting detection...');
       setDebugInfo('Starting detection...');
