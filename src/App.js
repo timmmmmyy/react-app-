@@ -1790,6 +1790,19 @@ const FaceTouchDetector = () => {
     }
   };
 
+  const initAudio = () => {
+    // This function can be expanded to initialize or resume the AudioContext
+    // For now, its main purpose is to be called from a user interaction handler
+    // to unlock the AudioContext in browsers with strict autoplay policies.
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+      console.log('AudioContext resumed on user interaction.');
+    } else if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('AudioContext created on user interaction.');
+    }
+  };
+
   // Start detection
   const startDetection = async () => {
     // Ensure audio is unlocked as soon as the user starts detection
