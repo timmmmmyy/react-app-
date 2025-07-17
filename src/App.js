@@ -569,6 +569,29 @@ const FaceTouchDetector = () => {
     return false;
   };
 
+  // ---
+  // TRIAL MANAGEMENT
+  // ---
+
+  // Persistent flag so a user can't restart the trial after it's been used on this device
+  const [trialUsed, setTrialUsed] = useState(() => localStorage.getItem('ascends_trial_used') === 'true');
+
+  // Whenever the trial successfully starts mark as used
+  useEffect(() => {
+    if (isTrialActive && !trialUsed) {
+      setTrialUsed(true);
+      localStorage.setItem('ascends_trial_used', 'true');
+    }
+  }, [isTrialActive, trialUsed]);
+
+  // If the trial expires make sure it remains locked out indefinitely
+  useEffect(() => {
+    if (isTrialExpired && !trialUsed) {
+      setTrialUsed(true);
+      localStorage.setItem('ascends_trial_used', 'true');
+    }
+  }, [isTrialExpired, trialUsed]);
+
   // Trial Management Functions
   const startTrial = () => {
     if (!isAuthenticated) {
@@ -576,7 +599,12 @@ const FaceTouchDetector = () => {
       setAuthMode('register');
       return;
     }
-    
+    // If trial already used or expired, show upgrade instead
+    if (trialUsed || isTrialExpired) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     // Use API to start trial
     startTrialAPI();
   };
@@ -1172,9 +1200,7 @@ const FaceTouchDetector = () => {
           const videoToCanvasScale = Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight);
           
           const radiusGood = Math.sqrt(baselineSize / Math.PI) * videoToCanvasScale * 1.2;    // Baseline (green) – slightly enlarged for visibility
-          // Emphasise change: scale baseline radius by (1 + %increase)
-          const increaseFactor = 1 + (faceSizeIncrease / 100);
-          const radiusCurrent = radiusGood * Math.max(increaseFactor, 1.01); // ensure visibly larger
+          const radiusCurrent = Math.sqrt(currentSize / Math.PI) * videoToCanvasScale * 1.2;  // Live (red)
           
           // Draw green "target" ring (baseline)
           ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)'; // Green
@@ -1214,7 +1240,7 @@ const FaceTouchDetector = () => {
       }
     }
     
-      ctx.restore();
+        ctx.restore();
   };
 
   // Timer refs for 2-second delays - REMOVED
@@ -1503,7 +1529,7 @@ const FaceTouchDetector = () => {
     }
     
     if (!isTrialActive && !hasLifetimePlan) {
-      if (isTrialExpired) {
+      if (isTrialExpired || trialUsed) {
         setShowUpgradeModal(true);
         return;
       }
@@ -1780,9 +1806,19 @@ const FaceTouchDetector = () => {
         </div>
       );
     }
+    // Show trial button only if it has never been used
+    if (!trialUsed && !isTrialExpired) {
+      return (
+        <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
+          Start Free Trial Now
+        </button>
+      );
+    }
+
+    // Otherwise suggest upgrade
     return (
-      <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
-        Start Free Trial Now
+      <button onClick={() => setShowUpgradeModal(true)} className="bg-purple-600 text-white px-4 py-2 rounded">
+        Upgrade to Continue
       </button>
     );
   };
@@ -2026,7 +2062,7 @@ const FaceTouchDetector = () => {
               {/* Trial Status Banner */}
               {isAuthenticated && !hasLifetimePlan && (
                 <div className="mt-6 max-w-2xl mx-auto">
-                  {!isTrialActive && !isTrialExpired && !trialStartTime ? (
+                  {!trialUsed && !isTrialActive && !isTrialExpired && !trialStartTime ? (
                     <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-xl p-4 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <Crown className="w-5 h-5 text-yellow-400" />
