@@ -604,7 +604,7 @@ const FaceTouchDetector = () => {
       setShowUpgradeModal(true);
       return;
     }
-
+    
     // Use API to start trial
     startTrialAPI();
   };
@@ -1808,9 +1808,9 @@ const FaceTouchDetector = () => {
     }
     // Show trial button only if it has never been used
     if (!trialUsed && !isTrialExpired) {
-      return (
-        <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
-          Start Free Trial Now
+    return (
+      <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
+        Start Free Trial Now
         </button>
       );
     }
@@ -2095,7 +2095,7 @@ const FaceTouchDetector = () => {
                         onClick={() => window.location.href = '/pricing'}
                         className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold px-6 py-2 rounded-lg transition-all shadow-lg"
                       >
-                        Upgrade Now - $10 Lifetime
+                        Upgrade Now - $9.99 Lifetime
                       </button>
                     </div>
                   ) : null}

@@ -98,7 +98,7 @@ const PricingPage = () => {
             Get Lifetime Access
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-            Start with a FREE 1-hour trial, then upgrade to lifetime access for just $10. No recurring fees, no subscriptions - own it forever!
+            Start with a FREE 1-hour trial, then upgrade to lifetime access for just $9.99. No recurring fees, no subscriptions - own it forever!
           </p>
           
           {canceled && (
@@ -178,7 +178,7 @@ const PricingPage = () => {
               <h3 className="text-2xl font-bold mb-2">Lifetime Access</h3>
               <p className="text-gray-300 mb-4">Own it forever - no recurring fees!</p>
               <div className="text-4xl font-bold mb-2 text-yellow-400">
-                $10
+                $9.99
                   </div>
               <p className="text-sm text-gray-400">One-time payment</p>
                 </div>
@@ -229,7 +229,7 @@ const PricingPage = () => {
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6">
               <h4 className="font-bold mb-3">What happens after the free trial?</h4>
-              <p className="text-gray-300">After your 1-hour trial expires, you'll need to purchase lifetime access for $10 to continue using premium features. No recurring fees!</p>
+              <p className="text-gray-300">After your 1-hour trial expires, you'll need to purchase lifetime access for $9.99 to continue using premium features. No recurring fees!</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6">
               <h4 className="font-bold mb-3">Is my data secure?</h4>
@@ -241,7 +241,7 @@ const PricingPage = () => {
             </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-lg p-6">
               <h4 className="font-bold mb-3">Is this really a one-time payment?</h4>
-              <p className="text-gray-300">Yes! Pay $10 once and own Ascends forever. No monthly fees, no hidden costs, and all future updates are included.</p>
+              <p className="text-gray-300">Yes! Pay $9.99 once and own Ascends forever. No monthly fees, no hidden costs, and all future updates are included.</p>
             </div>
           </div>
         </div>

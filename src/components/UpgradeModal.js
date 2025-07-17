@@ -67,9 +67,8 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade, trialTimeRemaining, isTrialE
 
         <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-lg mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">$10</div>
-            <div className="text-sm text-white/90">One-time payment</div>
-            <div className="text-xs text-white/75 mt-1">No subscriptions, yours forever</div>
+            <div className="text-5xl font-extrabold text-white">$9.99</div>
+            <div className="ml-2 text-gray-400">one-time payment</div>
           </div>
         </div>
 

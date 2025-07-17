@@ -32,8 +32,9 @@ const SUBSCRIPTION_PLANS = {
   lifetime: {
     id: 'lifetime',
     name: 'Lifetime Access',
-    description: 'One-time payment for lifetime access to all features',
+    description: 'One-time payment for lifetime access to all premium features.',
     features: [
+      'Everything in Free Trial',
       'Face touch detection',
       'Advanced posture calibration',
       'Custom alert sounds',
@@ -43,7 +44,7 @@ const SUBSCRIPTION_PLANS = {
       'Lifetime access - no recurring fees',
       'All future updates included'
     ],
-    price: 1000, // $10.00 in cents
+    price: 999, // $9.99 in cents
     priceId: process.env.STRIPE_LIFETIME_PRICE_ID,
     popular: true,
     limits: {

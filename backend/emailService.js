@@ -125,7 +125,7 @@ class EmailService {
                         <li>🎯 <strong>1-Hour Free Trial</strong> - Full access to all features</li>
                         <li>🤖 <strong>AI Face Touch Detection</strong> - Break bad habits</li>
                         <li>📐 <strong>Posture Monitoring</strong> - Real-time feedback</li>
-                        <li>👑 <strong>Lifetime Access</strong> - Just $10, no subscriptions</li>
+                        <li>👑 <strong>Lifetime Access</strong> - Just $9.99, no subscriptions</li>
                     </ul>
                     
                     <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
@@ -151,7 +151,7 @@ What's included in your free trial:
 - 1-hour full access to all features
 - AI-powered face touch detection
 - Real-time posture monitoring
-- Lifetime access available for just $10
+- Lifetime access available for just $9.99
 
 This link will expire in 24 hours.
 

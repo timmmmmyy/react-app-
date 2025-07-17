@@ -25,7 +25,7 @@ const SuccessPage = () => {
             id: 'dev_session',
             plan: 'Lifetime Access',
             planName: 'Lifetime Access - Development Mode',
-            amountTotal: 1000, // $10.00 in cents
+            amountTotal: 999, // $9.99 in cents
             currency: 'USD',
             status: 'paid',
             customerEmail: 'development@example.com',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, ArrowRight, Settings, AlertCircle } from 'lucide-react';
+import { Crown, ArrowRight, Settings, AlertCircle, AlertTriangle } from 'lucide-react';
 import stripeService from '../services/stripeService';
 import apiService from '../services/apiService';
 
@@ -135,6 +135,24 @@ const SubscriptionStatus = ({ user, onUpgrade }) => {
   }
 
   const { hasSubscription, plan, planName, status } = subscriptionStatus;
+
+  if (plan === 'trial_expired') {
+    return (
+      <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6 text-center">
+        <div className="flex justify-center mb-4">
+          <AlertTriangle className="w-10 h-10 text-red-400" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Free Trial Expired</h3>
+        <p className="text-gray-300 mb-6">Upgrade to the lifetime plan to continue using all premium features.</p>
+        <button
+          onClick={onUpgrade}
+          className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:opacity-90 text-white font-bold px-6 py-3 rounded-lg transition-all shadow-lg"
+        >
+          Upgrade Now - $9.99
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-white/5 border border-white/10 rounded-lg p-4 ${hasSubscription ? 'bg-gradient-to-r from-blue-500/5 to-purple-500/5' : ''}`}>
