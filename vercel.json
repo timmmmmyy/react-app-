@@ -36,7 +36,7 @@
     }
   ],
   "env": {
-    "REACT_APP_API_URL": "@react_app_api_url",
+    "REACT_APP_API_URL": "https://react-app-x550.onrender.com",
     "REACT_APP_STRIPE_PUBLISHABLE_KEY": "@react_app_stripe_publishable_key"
   }
 } 
