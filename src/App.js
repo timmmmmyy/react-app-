@@ -1172,7 +1172,9 @@ const FaceTouchDetector = () => {
           const videoToCanvasScale = Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight);
           
           const radiusGood = Math.sqrt(baselineSize / Math.PI) * videoToCanvasScale * 1.2;    // Baseline (green) – slightly enlarged for visibility
-          const radiusCurrent = Math.sqrt(currentSize / Math.PI) * videoToCanvasScale * 1.2;  // Live (red)
+          // Emphasise change: scale baseline radius by (1 + %increase)
+          const increaseFactor = 1 + (faceSizeIncrease / 100);
+          const radiusCurrent = radiusGood * Math.max(increaseFactor, 1.01); // ensure visibly larger
           
           // Draw green "target" ring (baseline)
           ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)'; // Green
