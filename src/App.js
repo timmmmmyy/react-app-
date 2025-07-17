@@ -1213,7 +1213,6 @@ const FaceTouchDetector = () => {
     console.log(`[HANDLE POSTURE] isBad=${isBad}, deviation=${deviation.toFixed(2)}`);
     
     if (isBad) {
-      console.log('[DEBUG] Setting badPosture to TRUE');
       setBadPosture(true);
       
       // Start timing if not already started
@@ -1246,7 +1245,15 @@ const FaceTouchDetector = () => {
           }
         }
       }
-      console.log('[DEBUG] Setting badPosture to FALSE');
+      setBadPosture(false);
+      stopPostureSound();
+    } else {
+      // Good posture - reset timer and stop sound
+      if (postureStartTimeRef.current) {
+        console.log('[POSTURE] Good posture - resetting timer and stopping sound');
+        postureStartTimeRef.current = null;
+        postureAlertTriggeredRef.current = false;
+      }
       setBadPosture(false);
       stopPostureSound();
     }
@@ -1498,7 +1505,6 @@ const FaceTouchDetector = () => {
         setMinDistance(minDist);
         
         if (isTouching) {
-          console.log('[DEBUG] Setting isTouchingFace to TRUE');
           setIsTouchingFace(true);
           
           // Start timing if not already started
@@ -1538,7 +1544,6 @@ const FaceTouchDetector = () => {
             faceStartTimeRef.current = null;
             faceAlertTriggeredRef.current = false;
           }
-          console.log('[DEBUG] Setting isTouchingFace to FALSE');
           setIsTouchingFace(false);
           stopFaceTouchSound();
         }
@@ -1552,7 +1557,6 @@ const FaceTouchDetector = () => {
       }
       setHandsDetected(0);
       window.currentHandLandmarks = null;
-      console.log('[DEBUG] Setting isTouchingFace to FALSE (no hands)');
       setIsTouchingFace(false);
       stopFaceTouchSound();
     }
