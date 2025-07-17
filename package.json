@@ -32,7 +32,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "cross-env BUILD_PATH=./build-dist react-scripts build",
+    "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev:backend": "cd backend && npm run dev",
@@ -62,7 +62,6 @@
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0"
   }
