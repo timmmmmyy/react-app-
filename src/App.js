@@ -1331,26 +1331,17 @@ const FaceTouchDetector = () => {
 
   // Draw results on canvas (optimized for low CPU)
   const drawResults = () => {
-    if (!isTabVisible) return;
-    
-    // Skip drawing more aggressively for performance
-    if (frameCountRef.current % DRAW_EVERY_N_FRAMES !== 0) return;
-    
+    if (!postureAlertActive) return; // Only draw guidance when alert active
     const canvas = canvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video) return;
-
-    // DEBUG: Log at the start of drawResults
-    console.log('drawResults called. poseDetected:', poseDetected, 'window.currentPoseLandmarks:', window.currentPoseLandmarks);
-
-    // Get the actual rendered size of the canvas
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Calculate scale and offset for object-fit: cover
+    // helpers
     const videoAspect = video.videoWidth / video.videoHeight;
     const canvasAspect = canvas.width / canvas.height;
     let drawWidth, drawHeight, offsetX, offsetY;
@@ -1358,192 +1349,38 @@ const FaceTouchDetector = () => {
       drawWidth = canvas.width;
       drawHeight = canvas.width / videoAspect;
       offsetX = 0;
-      offsetY = (canvas.height - drawHeight) / 2;
+      offsetY = (canvas.height - drawHeight)/2;
     } else {
       drawHeight = canvas.height;
       drawWidth = canvas.height * videoAspect;
       offsetY = 0;
-      offsetX = (canvas.width - drawWidth) / 2;
+      offsetX = (canvas.width - drawWidth)/2;
     }
+    const toCanvas = (lm)=> ({x: offsetX + lm.x*drawWidth, y: offsetY + lm.y*drawHeight});
 
-    // Debug: Log sizing
-    console.log('VIDEO:', video.videoWidth, video.videoHeight, 'CANVAS:', canvas.width, canvas.height, 'DRAW:', drawWidth, drawHeight, 'OFFSET:', offsetX, offsetY);
-
-    // Helper to transform normalized landmark to object-cover-mapped canvas coordinates (no mirroring)
-    const toCanvas = (lm) => {
-      return {
-        x: offsetX + lm.x * drawWidth,
-        y: offsetY + lm.y * drawHeight
-      };
-    };
-
-    // MINIMAL TEST: Draw just the nose landmark as a red circle
-    if (window.currentPoseLandmarks && window.currentPoseLandmarks.length > 0) {
-      console.log('POSE LANDMARKS FOUND:', window.currentPoseLandmarks.length);
-      const landmarks = window.currentPoseLandmarks;
-      
-      // CHECK POSTURE DIRECTLY HERE FOR IMMEDIATE COLOR RESPONSE
-      const { isBad: currentlyBadPosture } = checkPosture(landmarks);
-      const color = currentlyBadPosture ? '#ef4444' : '#10b981'; // Red for bad posture, green for good
-      const lineWidth = currentlyBadPosture ? 3 : 2;
-      
-      console.log(`[SKELETON COLOR] currentlyBadPosture=${currentlyBadPosture}, color=${color}, lineWidth=${lineWidth}`);
-
-      // NOW ADD BACK THE SKELETON (simplified for performance)
-      const POSE_CONNECTIONS = [
-        // Essential connections only (reduced from full skeleton)
-        [11,12], // Shoulders
-        [11,13],[13,15], // Left arm
-        [12,14],[14,16], // Right arm
-        [11,23],[12,24],[23,24], // Torso
-        [23,25],[25,27], // Left leg
-        [24,26],[26,28]  // Right leg
-        // Removed face and hand connections for performance
-      ];
-
-      // Draw pose connections
-      ctx.save();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      POSE_CONNECTIONS.forEach(([start, end]) => {
-        const lmStart = landmarks[start];
-        const lmEnd = landmarks[end];
-        if (lmStart && lmEnd) {
-          const p1 = toCanvas(lmStart);
-          const p2 = toCanvas(lmEnd);
-          ctx.beginPath();
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-        }
-      });
-
-      // Draw key landmarks as circles (reduced set for performance)
-      const keyLandmarks = [11, 12, 23, 24]; // Only shoulders and hips
-      ctx.fillStyle = color;
-      keyLandmarks.forEach(index => {
-        const landmark = landmarks[index];
-        if (landmark) {
-          const { x, y } = toCanvas(landmark);
-          const radius = 2; // Smaller radius for performance
-          ctx.beginPath();
-          ctx.arc(x, y, radius, 0, 2 * Math.PI);
-          ctx.fill();
-        }
-      });
-
-      ctx.restore();
-      console.log('DREW FULL SKELETON');
-    } else {
-      console.log('NO POSE LANDMARKS FOUND');
-    }
-    
-    // VISUALIZE FACE TOUCH DETECTION POINTS
-    // Draw tracked face points as blue circles
-    if (window.currentFaceLandmarks && window.currentFaceLandmarks.length > 0) {
-      const faceLandmarks = window.currentFaceLandmarks;
-      const FACE_POINTS = [1, 10, 151, 234, 454]; // Same as in checkFaceTouch
-      
-      ctx.save();
-      ctx.fillStyle = '#3b82f6'; // Blue for face points
-      ctx.strokeStyle = '#1e40af';
-      ctx.lineWidth = 2;
-      
-      FACE_POINTS.forEach(idx => {
-        if (idx < faceLandmarks.length) {
-          const point = toCanvas(faceLandmarks[idx]);
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.stroke();
-        }
-      });
-      ctx.restore();
-    }
-    
-    // Draw tracked wrist points as orange circles
-    if (window.currentPoseLandmarks && window.currentPoseLandmarks.length > 0) {
-      const WRIST_POINTS = [15, 16]; // Left and right wrists from pose
-      
-      // Get face boundaries for filtering visualization
-      let faceTop = 1, faceBottom = 0;
-      if (window.currentFaceLandmarks && window.currentFaceLandmarks.length > 0) {
-        const FACE_POINTS = [1, 10, 151, 234, 454];
-        FACE_POINTS.forEach(fIdx => {
-          if (fIdx < window.currentFaceLandmarks.length) {
-            const face = window.currentFaceLandmarks[fIdx];
-            faceTop = Math.min(faceTop, face.y);
-            faceBottom = Math.max(faceBottom, face.y);
-          }
-        });
+    // Determine if neck-extension is cause
+    const neckExt = faceSizeIncrease > detectionStateRef.current.faceSizeThreshold;
+    if (neckExt && window.currentFaceLandmarks) {
+      const nose = window.currentFaceLandmarks[1];
+      if (nose) {
+        const p = toCanvas(nose);
+        const baseline = detectionStateRef.current.calibratedFaceSize || 50;
+        const scale = (baseline * Math.min(drawWidth/ video.videoWidth, drawHeight/ video.videoHeight))/2;
+        const radiusGood = scale;
+        const radiusCurrent = radiusGood * (1+ faceSizeIncrease/100);
+        ctx.strokeStyle='#10b981';
+        ctx.lineWidth=3;
+        ctx.beginPath();ctx.arc(p.x,p.y,radiusGood,0,2*Math.PI);ctx.stroke();
+        ctx.strokeStyle='#ef4444';
+        ctx.beginPath();ctx.arc(p.x,p.y,radiusCurrent,0,2*Math.PI);ctx.stroke();
       }
-      
-      const faceBottomY = faceBottom * video.videoHeight;
-      const faceTopY = faceTop * video.videoHeight;
-      const faceHeight = faceBottomY - faceTopY;
-      const allowedBelowFace = faceHeight * 0.3;
-      
-      ctx.save();
-      ctx.lineWidth = 3;
-      
-      WRIST_POINTS.forEach(idx => {
-        const wrist = window.currentPoseLandmarks[idx];
-        if (wrist && wrist.visibility > 0.5) {
-          const point = toCanvas(wrist);
-          const wristY = wrist.y * video.videoHeight;
-          
-          // Color based on whether wrist is filtered or active
-          const isFiltered = wristY > faceBottomY + allowedBelowFace;
-          ctx.fillStyle = isFiltered ? '#6b7280' : '#f97316'; // Gray for filtered, orange for active
-          ctx.strokeStyle = isFiltered ? '#4b5563' : '#ea580c';
-          
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, 10, 0, 2 * Math.PI);
-          ctx.fill();
-          ctx.stroke();
-          
-          // Add text label
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '12px Inter';
-          ctx.textAlign = 'center';
-          const label = `${idx === 15 ? 'L' : 'R'} ${isFiltered ? '(filtered)' : ''}`;
-          ctx.fillText(label, point.x, point.y - 15);
-        }
-      });
-      ctx.restore();
-    }
-    
-    // Draw detection threshold circles around face points if wrists are detected
-    if (window.currentFaceLandmarks && window.currentPoseLandmarks && window.currentPoseLandmarks.length > 0) {
-      const faceLandmarks = window.currentFaceLandmarks;
-      const FACE_POINTS = [1, 10, 151, 234, 454];
-      const threshold = detectionStateRef.current.threshold;
-      
-      // Convert threshold from video pixels to canvas pixels
-      const video = videoRef.current;
-      if (video && video.videoWidth > 0) {
-        const scaleX = drawWidth / video.videoWidth;
-        const scaleY = drawHeight / video.videoHeight;
-        const canvasThreshold = threshold * Math.min(scaleX, scaleY);
-        
-        ctx.save();
-        ctx.strokeStyle = '#ef4444'; // Red for detection zones
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 5]); // Dashed line
-        
-        FACE_POINTS.forEach(idx => {
-          if (idx < faceLandmarks.length) {
-            const point = toCanvas(faceLandmarks[idx]);
-            ctx.beginPath();
-            ctx.arc(point.x, point.y, canvasThreshold, 0, 2 * Math.PI);
-            ctx.stroke();
-          }
-        });
-        ctx.restore();
-      }
+    } else if (detectionStateRef.current.calibratedLandmarks && window.currentPoseLandmarks) {
+      const baseline = detectionStateRef.current.calibratedLandmarks;
+      const currentKeys = getKeyPoints(window.currentPoseLandmarks, video.videoWidth, video.videoHeight);
+      ctx.fillStyle='#10b981';
+      Object.values(baseline).forEach(pt=>{const p=toCanvas({x:pt.x/video.videoWidth,y:pt.y/video.videoHeight});ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.fill();});
+      ctx.fillStyle='#ef4444';
+      Object.values(currentKeys).forEach(pt=>{const p=toCanvas({x:pt.x/video.videoWidth,y:pt.y/video.videoHeight});ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.fill();});
     }
   };
 
@@ -2352,6 +2189,34 @@ const FaceTouchDetector = () => {
     );
   };
 
+  const [faceAlertActive, setFaceAlertActive] = useState(false);
+  const [postureAlertActive, setPostureAlertActive] = useState(false);
+
+  // Watchers to handle 2-second alert activation
+  useEffect(() => {
+    if (isTouchingFace) {
+      if (!faceTimerRef.current) {
+        faceTimerRef.current = setTimeout(() => setFaceAlertActive(true), 2000);
+      }
+    } else {
+      clearTimeout(faceTimerRef.current);
+      faceTimerRef.current = null;
+      setFaceAlertActive(false);
+    }
+  }, [isTouchingFace]);
+
+  useEffect(() => {
+    if (badPosture) {
+      if (!postureTimerRef.current) {
+        postureTimerRef.current = setTimeout(() => setPostureAlertActive(true), 2000);
+      }
+    } else {
+      clearTimeout(postureTimerRef.current);
+      postureTimerRef.current = null;
+      setPostureAlertActive(false);
+    }
+  }, [badPosture]);
+
   if (!isAuthCheckComplete) {
     return (
         <div className="gradient-bg text-gray-200 flex items-center justify-center h-screen">
@@ -2458,7 +2323,7 @@ const FaceTouchDetector = () => {
                 )}
               </div>
 
-              <div className="relative bg-gray-900/50 rounded-xl overflow-hidden aspect-video border border-gray-700/50">
+              <div className="relative bg-gray-900/50 rounded-xl overflow-hidden aspect-video" style={{border: `4px solid ${ (faceAlertActive || postureAlertActive) ? '#ef4444' : '#10b981'}`}}>
                 <video
                   ref={videoRef}
                   autoPlay
