@@ -901,7 +901,7 @@ const FaceTouchDetector = () => {
       if (faceAlertSound_ref === 'slap') {
         audioUrl = '/slap.mp3';
       } else if (faceAlertSound_ref === 'tuntun') {
-        audioUrl = '/alert.mp4';
+        audioUrl = '/alert.mp3';
       } else if (faceAlertSound_ref === 'custom' && customSoundUrl_ref) {
         audioUrl = customSoundUrl_ref;
       } else {
@@ -964,7 +964,7 @@ const FaceTouchDetector = () => {
       if (postureAlertSound_ref === 'slap') {
         audioUrl = '/slap.mp3';
       } else if (postureAlertSound_ref === 'tuntun') {
-        audioUrl = '/alert.mp4';
+        audioUrl = '/alert.mp3';
       } else if (postureAlertSound_ref === 'custom' && customSoundUrl_ref) {
         audioUrl = customSoundUrl_ref;
       } else {
@@ -2338,10 +2338,8 @@ const FaceTouchDetector = () => {
                 <canvas
                   ref={canvasRef}
                   className="absolute top-0 left-0 w-full h-full face-touch-overlay"
-                  style={{ 
-                    transform: 'scaleX(-1)',
-                    display: 'block', // Always show for debugging
-                    border: '3px solid red', // Debug border
+                  style={{
+                    display: 'block',
                     pointerEvents: 'none',
                     zIndex: 20,
                     position: 'absolute',
