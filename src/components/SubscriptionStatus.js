@@ -188,7 +188,7 @@ const SubscriptionStatus = ({ user, onUpgrade }) => {
             onClick={() => window.location.href = '/pricing'}
             className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-sm flex items-center justify-center"
           >
-            Get Lifetime Access - $10
+            Get Lifetime Access - $9.99
             <ArrowRight className="w-4 h-4 ml-1" />
           </button>
         ) : (

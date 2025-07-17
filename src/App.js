@@ -599,12 +599,12 @@ const FaceTouchDetector = () => {
       setAuthMode('register');
       return;
     }
-    // If trial already used or expired, show upgrade instead
-    if (trialUsed || isTrialExpired) {
+    // If trial already expired, show upgrade instead
+    if (isTrialExpired) {
       setShowUpgradeModal(true);
       return;
     }
-    
+
     // Use API to start trial
     startTrialAPI();
   };
@@ -1529,7 +1529,7 @@ const FaceTouchDetector = () => {
     }
     
     if (!isTrialActive && !hasLifetimePlan) {
-      if (isTrialExpired || trialUsed) {
+      if (isTrialExpired) {
         setShowUpgradeModal(true);
         return;
       }
@@ -1806,11 +1806,11 @@ const FaceTouchDetector = () => {
         </div>
       );
     }
-    // Show trial button only if it has never been used
-    if (!trialUsed && !isTrialExpired) {
-    return (
-      <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
-        Start Free Trial Now
+    // Show trial button only if it has not started and not expired
+    if (!trialStartTime && !isTrialExpired) {
+      return (
+        <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
+          Start Free Trial Now
         </button>
       );
     }
@@ -2062,7 +2062,7 @@ const FaceTouchDetector = () => {
               {/* Trial Status Banner */}
               {isAuthenticated && !hasLifetimePlan && (
                 <div className="mt-6 max-w-2xl mx-auto">
-                  {!trialUsed && !isTrialActive && !isTrialExpired && !trialStartTime ? (
+                  {!isTrialActive && !isTrialExpired && !trialStartTime ? (
                     <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-xl p-4 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <Crown className="w-5 h-5 text-yellow-400" />
@@ -2245,151 +2245,105 @@ const FaceTouchDetector = () => {
                       max="50"
                       value={allowedCoordDeviation}
                       onChange={(e) => setAllowedCoordDeviation(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-3">
-                      Face Touch Distance Threshold: <span className="text-blue-400 font-semibold">{threshold}px</span>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="sound-enabled" className="flex items-center cursor-pointer">
+                      <span className="text-sm font-medium text-gray-300">Enable Alert Sounds</span>
                     </label>
-                    <input
-                      type="range"
-                      min="35"
-                      max="150"
-                      value={threshold}
-                      onChange={(e) => setThreshold(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Lower values = more sensitive face touch detection (minimum 35px for reliability)
-                    </p>
+                    <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="sound-enabled" id="sound-enabled" checked={soundEnabled} onChange={(e) => setSoundEnabled(e.target.checked)} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label htmlFor="sound-enabled" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                    </div>
                   </div>
-                  
-                  <div className="border-t border-gray-600/50 pt-4">
-                    <h4 className="text-lg font-semibold text-white mb-4">Sound Settings</h4>
-                    <div className="flex items-center justify-between mb-4">
-                      <label htmlFor="sound-enabled" className="text-sm font-medium text-gray-300">
-                        Enable Sound Alerts
+                  <div>
+                    <label htmlFor="face-alert-sound" className="block text-sm font-medium text-gray-300 mb-2">Face Touch Alert Sound</label>
+                    <select
+                      id="face-alert-sound"
+                      value={faceAlertSound}
+                      onChange={(e) => setFaceAlertSound(e.target.value)}
+                      className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                    >
+                      <option value="chime">Chime</option>
+                      {/* <option value="beep">Beep</option> */}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="posture-alert-sound" className="block text-sm font-medium text-gray-300 mb-2">Posture Alert Sound</label>
+                    <select
+                      id="posture-alert-sound"
+                      value={postureAlertSound}
+                      onChange={(e) => setPostureAlertSound(e.target.value)}
+                      className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                    >
+                      <option value="chime">Chime</option>
+                      {/* <option value="beep">Beep</option> */}
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="neck-extension-enabled" className="flex items-center cursor-pointer">
+                      <span className="text-sm font-medium text-gray-300">Enable Neck Extension Detection</span>
+                    </label>
+                    <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="neck-extension-enabled" id="neck-extension-enabled" checked={neckExtensionEnabled} onChange={(e) => setNeckExtensionEnabled(e.target.checked)} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label htmlFor="neck-extension-enabled" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
+                    </div>
+                  </div>
+                  {neckExtensionEnabled && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-3">
+                        Neck Extension Threshold: <span className="text-blue-400 font-semibold">{faceSizeThreshold}%</span>
                       </label>
                       <input
-                        type="checkbox"
-                        id="sound-enabled"
-                        checked={soundEnabled}
-                        onChange={(e) => setSoundEnabled(e.target.checked)}
-                        className="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                        type="range"
+                        min="5"
+                        max="50"
+                        value={faceSizeThreshold}
+                        onChange={(e) => setFaceSizeThreshold(parseInt(e.target.value))}
+                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
-
-                    {/* Simplified Sound Selectors */}
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Face Touch Alert Sound</label>
-                        <div className="flex items-center gap-3">
-                          <select
-                            value={faceAlertSound}
-                            onChange={(e) => setFaceAlertSound(e.target.value)}
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="chime">Chime</option>
-                          </select>
-                          <button onClick={() => playAlert('face')} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Test</button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Bad Posture Alert Sound</label>
-                        <div className="flex items-center gap-3">
-                          <select
-                            value={postureAlertSound}
-                            onChange={(e) => setPostureAlertSound(e.target.value)}
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="chime">Chime</option>
-                          </select>
-                          <button onClick={() => playAlert('posture')} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Test</button>
-                        </div>
-                      </div>
-                    </div>
+                  )}
+                  <div>
+                    <button onClick={handleForceRecalibrate} className="text-blue-400 hover:text-blue-300 text-sm">Force Recalibrate Posture</button>
                   </div>
-                  
-                  {/* Neck Extension Detection Settings */}
-                  <div className="border-t border-gray-600/50 pt-4">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <input
-                        type="checkbox"
-                        id="neck-extension-enabled"
-                        checked={neckExtensionEnabled}
-                        onChange={(e) => setNeckExtensionEnabled(e.target.checked)}
-                        className="rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-2"
-                      />
-                      <label htmlFor="neck-extension-enabled" className="text-sm font-medium text-gray-300">
-                        Enable Neck Extension Detection
-                      </label>
-                    </div>
-
-                    {neckExtensionEnabled && (
-                      <div className="space-y-4 ml-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-3">
-                            Face Size Increase Threshold: <span className="text-blue-400 font-semibold">{faceSizeThreshold}%</span>
-                          </label>
-                          <input
-                            type="range"
-                            min="5"
-                            max="30"
-                            value={faceSizeThreshold}
-                            onChange={(e) => setFaceSizeThreshold(parseInt(e.target.value))}
-                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                          />
-                          <p className="text-xs text-gray-400 mt-1">
-                            Higher values = less sensitive to neck extension
-                          </p>
-                        </div>
-
-                        {isFaceSizeCalibrated && (
-                          <div className="bg-gray-800/50 p-3 rounded-lg">
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">Face Size Status</h4>
-                            <div className="text-xs text-gray-400 space-y-1">
-                              <div>Baseline Face Size: {calibratedFaceSize?.toFixed(1)}px²</div>
-                              <div>Current Face Size: {currentFaceSize?.toFixed(1)}px²</div>
-                              <div className={faceSizeIncrease > faceSizeThreshold ? 'text-red-400' : 'text-green-400'}>
-                                Size Increase: {faceSizeIncrease?.toFixed(1)}% 
-                                {faceSizeIncrease > faceSizeThreshold ? ' (Neck Extended!)' : ' (Good)'}
-                              </div>
-                              <button 
-                                className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs transition-colors" 
-                                onClick={handleResetFaceSize}
-                              >
-                                Reset Face Size
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                          </div>
-                        )}
-                      </div>
-                  </div>
-                  </div>
+                </div>
+              </div>
             )}
+            
           </div>
         </section>
       </main>
 
       {/* Modals */}
-        <AuthModal 
-          isOpen={showAuthModal}
+      <AuthModal
+        isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-          mode={authMode}
-          onModeChange={setAuthMode}
-          onLogin={login}
-          onRegister={register}
-          emailVerificationSent={emailVerificationSent}
-          setEmailVerificationSent={setEmailVerificationSent}
-        />
-      <UpgradeModal 
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onLogin={login}
+        onRegister={register}
+        emailVerificationSent={emailVerificationSent}
+        setEmailVerificationSent={setEmailVerificationSent}
+      />
+      <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        onUpgrade={() => navigate('/pricing')}
+        onUpgrade={() => {
+          setShowUpgradeModal(false);
+          window.location.href = '/pricing';
+        }}
+      />
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => {
+          handleForceRecalibrate();
+          setShowConfirmModal(false);
+        }}
+        title="Confirm Recalibration"
+        message="Are you sure you want to reset your posture calibration? This will clear your current settings."
       />
     </div>
   );
