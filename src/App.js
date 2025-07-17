@@ -788,13 +788,13 @@ const FaceTouchDetector = () => {
     
     if (!soundEnabled_ref) return;
 
-    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    const context = audioContextRef.current;
-    if (context.state === 'suspended') {
-      context.resume();
-    }
+        if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const context = audioContextRef.current;
+        if (context.state === 'suspended') {
+          context.resume();
+        }
 
     const soundToPlay = type === 'face' ? faceAlertSound_ref : postureAlertSound_ref;
 
@@ -833,7 +833,7 @@ const FaceTouchDetector = () => {
     
     if (faceWebAudioRef.current) return; // Already playing
 
-    startWebAudioLoop(faceAlertSound_ref, 'face');
+        startWebAudioLoop(faceAlertSound_ref, 'face');
   };
 
   // Stop continuous face touch alert sound
@@ -851,7 +851,7 @@ const FaceTouchDetector = () => {
 
     if (postureWebAudioRef.current) return; // Already playing
 
-    startWebAudioLoop(postureAlertSound_ref, 'posture');
+        startWebAudioLoop(postureAlertSound_ref, 'posture');
   };
 
   // Stop continuous posture alert sound
@@ -1019,9 +1019,9 @@ const FaceTouchDetector = () => {
         postureStartTimeRef.current = Date.now();
         postureAlertTriggeredRef.current = false;
       }
-      
+        
       const badPostureDuration = (Date.now() - postureStartTimeRef.current) / 1000;
-      const { postureHoldTime: holdTime_ref } = detectionStateRef.current;
+        const { postureHoldTime: holdTime_ref } = detectionStateRef.current;
 
       // If duration exceeds hold time, activate all alerts
       if (badPostureDuration >= holdTime_ref) {
@@ -1030,14 +1030,14 @@ const FaceTouchDetector = () => {
         // Trigger sound alert only once per continuous event
         if (!postureAlertTriggeredRef.current) {
           postureAlertTriggeredRef.current = true;
-          setPostureCount(prev => prev + 1);
+        setPostureCount(prev => prev + 1);
           setBadPostureAlert(true); // For text pop-up
           setTimeout(() => setBadPostureAlert(false), 1000);
-          startPostureSound();
+            startPostureSound();
+          }
         }
-      }
       
-    } else {
+      } else {
       // Good posture, reset everything
       if (postureStartTimeRef.current) {
         postureStartTimeRef.current = null;
@@ -1106,7 +1106,7 @@ const FaceTouchDetector = () => {
       if (dist < minDist) minDist = dist;
 
       if (dist < dynamicThreshold) {
-        return { isTouching: true, minDist: dist };
+          return { isTouching: true, minDist: dist };
       }
     }
     
@@ -1168,26 +1168,24 @@ const FaceTouchDetector = () => {
           const baselineSize = detectionStateRef.current.calibratedFaceSize;
           const currentSize = currentFaceSize;
           
-          // Scale radius based on video/canvas size difference
+          // Convert face area → radius of equivalent circle for intuitive scaling
           const videoToCanvasScale = Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight);
           
-          // Base radius on the square root of the area for a more proportional circle
-          const radiusGood = Math.sqrt(baselineSize) * 0.5 * videoToCanvasScale;
-          const radiusCurrent = Math.sqrt(currentSize) * 0.5 * videoToCanvasScale;
-
-          // Draw green "good" circle
+          const radiusGood = Math.sqrt(baselineSize / Math.PI) * videoToCanvasScale * 1.2;    // Baseline (green) – slightly enlarged for visibility
+          const radiusCurrent = Math.sqrt(currentSize / Math.PI) * videoToCanvasScale * 1.2;  // Live (red)
+          
+          // Draw green "target" ring (baseline)
           ctx.strokeStyle = 'rgba(16, 185, 129, 0.9)'; // Green
           ctx.lineWidth = 4;
           ctx.beginPath();
           ctx.arc(p.x, p.y, radiusGood, 0, 2 * Math.PI);
           ctx.stroke();
           
-          // Draw red "current" circle
-          ctx.strokeStyle = 'rgba(239, 68, 68, 0.9)'; // Red
-          ctx.lineWidth = 4;
+          // Draw red filled circle for current size so difference is obvious
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.8)'; // Red
           ctx.beginPath();
           ctx.arc(p.x, p.y, radiusCurrent, 0, 2 * Math.PI);
-          ctx.stroke();
+          ctx.fill();
         }
       // Case 2: Body Posture Alert
       } else if (detectionStateRef.current.isCalibrated && window.currentPoseLandmarks) {
@@ -1214,7 +1212,7 @@ const FaceTouchDetector = () => {
       }
     }
     
-    ctx.restore();
+      ctx.restore();
   };
 
   // Timer refs for 2-second delays - REMOVED
@@ -1293,9 +1291,9 @@ const FaceTouchDetector = () => {
             faceStartTimeRef.current = Date.now();
             faceAlertTriggeredRef.current = false;
           }
-          
+            
           const touchDuration = (Date.now() - faceStartTimeRef.current) / 1000;
-          const { faceTouchHoldTime: holdTime_ref } = detectionStateRef.current;
+            const { faceTouchHoldTime: holdTime_ref } = detectionStateRef.current;
 
           // If duration exceeds hold time, activate all alerts
           if (touchDuration >= holdTime_ref) {
@@ -1307,11 +1305,11 @@ const FaceTouchDetector = () => {
               setTouchCount(prev => prev + 1);
               setFaceTouchAlert(true);
               setTimeout(() => setFaceTouchAlert(false), 1000);
-              startFaceTouchSound();
+                startFaceTouchSound();
+              }
             }
-          }
 
-        } else {
+    } else {
           // Not touching - reset timer and stop sound
           if (faceStartTimeRef.current) {
             faceStartTimeRef.current = null;
@@ -1377,42 +1375,42 @@ const FaceTouchDetector = () => {
         throw new Error('MediaPipe classes not available after loading scripts');
       }
 
-      poseRef.current = new window.Pose({
+        poseRef.current = new window.Pose({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
       });
-      poseRef.current.setOptions({
-        modelComplexity: 0,
-        smoothLandmarks: true,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
-      });
-      poseRef.current.onResults(onPoseResults);
+        poseRef.current.setOptions({
+          modelComplexity: 0,
+          smoothLandmarks: true,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6
+        });
+        poseRef.current.onResults(onPoseResults);
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      handsRef.current = new window.Hands({
+        handsRef.current = new window.Hands({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
       });
-      handsRef.current.setOptions({
+        handsRef.current.setOptions({
         maxNumHands: 2,
-        modelComplexity: 0,
+          modelComplexity: 0,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
-      });
-      handsRef.current.onResults(onHandsResults);
+        });
+        handsRef.current.onResults(onHandsResults);
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      faceMeshRef.current = new window.FaceMesh({
+        faceMeshRef.current = new window.FaceMesh({
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
       });
-      faceMeshRef.current.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: false,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
-      });
-      faceMeshRef.current.onResults(onFaceResults);
+        faceMeshRef.current.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: false,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6
+        });
+        faceMeshRef.current.onResults(onFaceResults);
 
       setIsLoading(false);
       return true;
@@ -1521,8 +1519,8 @@ const FaceTouchDetector = () => {
     
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    
+      }
+
     try {
       const modelsReady = faceMeshRef.current && handsRef.current && poseRef.current;
       
@@ -1705,7 +1703,7 @@ const FaceTouchDetector = () => {
 
   useEffect(() => {
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     return () => {
       faceStartTimeRef.current = null;
@@ -2275,7 +2273,7 @@ const FaceTouchDetector = () => {
                       </div>
                     </div>
                   </div>
-
+                  
                   {/* Neck Extension Detection Settings */}
                   <div className="border-t border-gray-600/50 pt-4">
                     <div className="flex items-center space-x-3 mb-4">
@@ -2329,28 +2327,28 @@ const FaceTouchDetector = () => {
                             </div>
                           </div>
                         )}
+                          </div>
+                        )}
                       </div>
-                    )}
                   </div>
-                </div>
-              </div>
+                  </div>
             )}
           </div>
         </section>
       </main>
 
       {/* Modals */}
-      <AuthModal 
-        isOpen={showAuthModal} 
+        <AuthModal 
+          isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        mode={authMode}
-        onModeChange={setAuthMode}
-        onLogin={login}
-        onRegister={register}
-        emailVerificationSent={emailVerificationSent}
-        setEmailVerificationSent={setEmailVerificationSent}
-      />
-      <UpgradeModal
+          mode={authMode}
+          onModeChange={setAuthMode}
+          onLogin={login}
+          onRegister={register}
+          emailVerificationSent={emailVerificationSent}
+          setEmailVerificationSent={setEmailVerificationSent}
+        />
+      <UpgradeModal 
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onUpgrade={() => navigate('/pricing')}
