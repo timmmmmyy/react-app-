@@ -27,8 +27,9 @@ console.log(`[${new Date().toISOString()}] Instantiating EmailService...`);
 const EmailService = require('./emailService');
 const emailService = new EmailService(); // Create a single, shared instance
 
-// Import admin routes
+// Import routes
 const adminRoutes = require('./routes/admin');
+const stripeRoutes = require('./routes/stripe'); // Import Stripe routes
 
 const app = express();
 
@@ -437,45 +438,6 @@ app.get('/api/stripe/subscription-status', authenticateToken, async (req, res) =
     }
 });
 
-// New endpoint for creating a Stripe Checkout Session
-app.post('/api/stripe/create-checkout-session', authenticateToken, async (req, res) => {
-    try {
-        const { planId } = req.body;
-        const userId = req.user.userId || req.user.id;
-        const user = await db.findUserById(userId);
-
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        // Ensure this matches the frontend plan ID
-        if (planId !== 'lifetime') {
-            return res.status(400).json({ error: 'Invalid plan ID specified' });
-        }
-
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: [{
-                price: STRIPE_PRICE_ID,
-                quantity: 1,
-            }],
-            mode: 'payment',
-            success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL}/pricing?canceled=true`,
-            customer_email: user.email,
-            metadata: {
-                userId: user.id,
-            }
-        });
-
-        res.json({ success: true, url: session.url });
-
-    } catch (error) {
-        console.error('Stripe checkout session error:', error);
-        res.status(500).json({ success: false, error: 'Failed to create checkout session' });
-    }
-});
-
 // Stripe webhook endpoint
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
@@ -588,7 +550,10 @@ app.post('/api/dev/delete-all-users', async (req, res) => {
 });
 
 // Mount admin routes
-app.use('/api/admin', adminRoutes(authenticateToken));
+app.use('/api/admin', authenticateToken, adminRoutes);
+
+// Use Stripe routes
+app.use('/api/stripe', stripeRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
