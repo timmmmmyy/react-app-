@@ -1018,11 +1018,14 @@ const FaceTouchDetector = () => {
       if (!postureStartTimeRef.current) {
         postureStartTimeRef.current = Date.now();
         postureAlertTriggeredRef.current = false;
-        // Start visual alert timer
-        postureTimerRef.current = setTimeout(() => setPostureAlertActive(true), 2000);
       } else {
         const badPostureDuration = (Date.now() - postureStartTimeRef.current) / 1000;
         
+        // Check for visual alert activation
+        if (badPostureDuration >= 2) {
+          setPostureAlertActive(true);
+        }
+
         const { postureHoldTime: holdTime_ref } = detectionStateRef.current;
         if (badPostureDuration >= holdTime_ref && !postureAlertTriggeredRef.current) {
           postureAlertTriggeredRef.current = true;
@@ -1044,8 +1047,7 @@ const FaceTouchDetector = () => {
       }
       setBadPosture(false);
       stopPostureSound();
-      // Clear visual alert timer
-      clearTimeout(postureTimerRef.current);
+      // Clear visual alert
       setPostureAlertActive(false);
     }
   };
@@ -1278,11 +1280,14 @@ const FaceTouchDetector = () => {
           if (!faceStartTimeRef.current) {
             faceStartTimeRef.current = Date.now();
             faceAlertTriggeredRef.current = false;
-            // Start visual alert timer
-            faceTimerRef.current = setTimeout(() => setFaceAlertActive(true), 2000);
           } else {
             const touchDuration = (Date.now() - faceStartTimeRef.current) / 1000;
             
+            // Check for visual alert activation
+            if (touchDuration >= 2) {
+              setFaceAlertActive(true);
+            }
+
             const { faceTouchHoldTime: holdTime_ref } = detectionStateRef.current;
             if (touchDuration >= holdTime_ref && !faceAlertTriggeredRef.current) {
               faceAlertTriggeredRef.current = true;
@@ -1304,8 +1309,7 @@ const FaceTouchDetector = () => {
           }
           setIsTouchingFace(false);
           stopFaceTouchSound();
-          // Clear visual alert timer
-          clearTimeout(faceTimerRef.current);
+          // Clear visual alert
           setFaceAlertActive(false);
         }
       }
@@ -1318,8 +1322,7 @@ const FaceTouchDetector = () => {
       window.currentHandLandmarks = null;
       setIsTouchingFace(false);
       stopFaceTouchSound();
-      // Clear visual alert timer
-      clearTimeout(faceTimerRef.current);
+      // Clear visual alert
       setFaceAlertActive(false);
     }
     drawResults();
