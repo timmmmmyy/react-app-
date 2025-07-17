@@ -3,7 +3,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL;
 class ApiService {
   // Generic fetch method with authentication
   async fetch(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${API_BASE_URL.replace(/\/$/, '')}${endpoint}`;
     const token = localStorage.getItem('ascends_auth_token');
     
     const defaultHeaders = {
