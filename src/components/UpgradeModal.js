@@ -78,7 +78,7 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade, trialTimeRemaining, isTrialE
             className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             <Crown className="w-5 h-5" />
-            Upgrade Now
+            Upgrade Now - $9.99
           </button>
           <button
             onClick={onClose}
