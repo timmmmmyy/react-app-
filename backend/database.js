@@ -84,10 +84,13 @@ const dbOperations = {
         return new Promise((resolve, reject) => {
             const sql = `INSERT INTO users (email, password_hash, confirmation_token, email_verification_expires_at) VALUES (?, ?, ?, ?)`;
             const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
+            console.log(`[CREATE USER] Creating user: ${email} with token: ${confirmationToken} expires: ${expiresAt}`);
             db.run(sql, [email, passwordHash, confirmationToken, expiresAt], function(err) {
                 if (err) {
+                    console.error('[CREATE USER] Error:', err);
                     return reject(err);
                 }
+                console.log(`[CREATE USER] User created with ID: ${this.lastID}`);
                 db.get('SELECT * FROM users WHERE id = ?', [this.lastID], (err, row) => {
                     if (err) {
                         return reject(err);
@@ -152,8 +155,8 @@ const dbOperations = {
             if (!token) {
                 return reject(new Error('Token is required'));
             }
-            // Check for user with token, not confirmed, and either no expiry or not expired
-            const sql = `SELECT * FROM users WHERE confirmation_token = ? AND is_confirmed = 0 AND (email_verification_expires_at IS NULL OR email_verification_expires_at > CURRENT_TIMESTAMP)`;
+            // Check for user with token, not confirmed (NULL or 0), and either no expiry or not expired
+            const sql = `SELECT * FROM users WHERE confirmation_token = ? AND (is_confirmed IS NULL OR is_confirmed = 0) AND (email_verification_expires_at IS NULL OR email_verification_expires_at > CURRENT_TIMESTAMP)`;
             console.log(`[DEBUG] Searching for token: ${token}`);
             db.get(sql, [token], (err, row) => {
                 if (err) {
@@ -199,7 +202,7 @@ const dbOperations = {
                     confirmed_at = CURRENT_TIMESTAMP, 
                     confirmation_token = NULL, 
                     email_verification_expires_at = NULL 
-                WHERE confirmation_token = ? AND is_confirmed = 0
+                WHERE confirmation_token = ? AND (is_confirmed IS NULL OR is_confirmed = 0)
             `;
             
             db.run(sql, [token], function(err) {
