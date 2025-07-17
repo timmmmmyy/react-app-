@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Mail, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import apiService from '../services/apiService';
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
@@ -31,57 +32,36 @@ const VerifyEmailPage = () => {
         verificationAttempted.current = true;
         console.log('Attempting to verify email with token:', token);
         
-        const apiUrl = process.env.REACT_APP_API_URL;
-        // Ensure no double slashes by cleaning the base URL and manually concatenating
-        const cleanedApiUrl = apiUrl && apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-        const verificationUrl = `${cleanedApiUrl}/api/auth/confirm-email?token=${token}`;
-
-        const response = await fetch(verificationUrl, {
+        // Use apiService to make the verification request
+        const data = await apiService.fetch(`/api/auth/confirm-email?token=${token}`, {
           method: 'GET',
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
             // Add this header to bypass the ngrok browser warning page
             'ngrok-skip-browser-warning': 'true',
           },
         });
         
-        const responseText = await response.text();
-        console.log('Raw response:', responseText);
-        
-        let data;
-        try {
-          data = JSON.parse(responseText);
-          console.log('Parsed response data:', data);
-        } catch (e) {
-          console.error('Failed to parse response as JSON:', e);
-          setVerificationStatus('error');
-          setMessage('Server response format error. Please contact support.');
-          return;
-        }
+        console.log('Verification response data:', data);
 
-        if (response.ok) {
-          setVerificationStatus('success');
-          setMessage(data.message || 'Email verified successfully!');
-          
-          // Redirect to login page after 5 seconds
-          setTimeout(() => {
-            navigate('/login', { replace: true });
-          }, 5000);
-        } else {
-          if (data.alreadyConfirmed) {
-            setVerificationStatus('already-verified');
-            setMessage(data.message || 'Your email has already been verified. You can proceed to login.');
-          } else {
-            setVerificationStatus('error');
-            setMessage(data.error || 'Email verification failed. Please try again or contact support.');
-            console.error('Verification failed:', data);
-          }
-        }
+        setVerificationStatus('success');
+        setMessage(data.message || 'Email verified successfully!');
+        
+        // Redirect to login page after 5 seconds
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 5000);
+        
       } catch (error) {
         console.error('Verification error:', error);
-        setVerificationStatus('error');
-        setMessage('Unable to connect to the server. Please check your internet connection and try again.');
+        
+        // Handle specific error cases
+        if (error.message && error.message.includes('already confirmed')) {
+          setVerificationStatus('already-verified');
+          setMessage('Your email has already been verified. You can proceed to login.');
+        } else {
+          setVerificationStatus('error');
+          setMessage(error.message || 'Email verification failed. Please try again or contact support.');
+        }
       } finally {
         setIsLoading(false);
       }
