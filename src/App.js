@@ -1018,6 +1018,8 @@ const FaceTouchDetector = () => {
       if (!postureStartTimeRef.current) {
         postureStartTimeRef.current = Date.now();
         postureAlertTriggeredRef.current = false;
+        // Start visual alert timer
+        postureTimerRef.current = setTimeout(() => setPostureAlertActive(true), 2000);
       } else {
         const badPostureDuration = (Date.now() - postureStartTimeRef.current) / 1000;
         
@@ -1042,6 +1044,9 @@ const FaceTouchDetector = () => {
       }
       setBadPosture(false);
       stopPostureSound();
+      // Clear visual alert timer
+      clearTimeout(postureTimerRef.current);
+      setPostureAlertActive(false);
     }
   };
 
@@ -1273,6 +1278,8 @@ const FaceTouchDetector = () => {
           if (!faceStartTimeRef.current) {
             faceStartTimeRef.current = Date.now();
             faceAlertTriggeredRef.current = false;
+            // Start visual alert timer
+            faceTimerRef.current = setTimeout(() => setFaceAlertActive(true), 2000);
           } else {
             const touchDuration = (Date.now() - faceStartTimeRef.current) / 1000;
             
@@ -1297,6 +1304,9 @@ const FaceTouchDetector = () => {
           }
           setIsTouchingFace(false);
           stopFaceTouchSound();
+          // Clear visual alert timer
+          clearTimeout(faceTimerRef.current);
+          setFaceAlertActive(false);
         }
       }
     } else {
@@ -1308,6 +1318,9 @@ const FaceTouchDetector = () => {
       window.currentHandLandmarks = null;
       setIsTouchingFace(false);
       stopFaceTouchSound();
+      // Clear visual alert timer
+      clearTimeout(faceTimerRef.current);
+      setFaceAlertActive(false);
     }
     drawResults();
   };
@@ -1765,31 +1778,6 @@ const FaceTouchDetector = () => {
 
   const [faceAlertActive, setFaceAlertActive] = useState(false);
   const [postureAlertActive, setPostureAlertActive] = useState(false);
-
-  // Watchers to handle 2-second alert activation
-  useEffect(() => {
-    if (isTouchingFace) {
-      if (!faceTimerRef.current) {
-        faceTimerRef.current = setTimeout(() => setFaceAlertActive(true), 2000);
-      }
-    } else {
-      clearTimeout(faceTimerRef.current);
-      faceTimerRef.current = null;
-      setFaceAlertActive(false);
-    }
-  }, [isTouchingFace]);
-
-  useEffect(() => {
-    if (badPosture) {
-      if (!postureTimerRef.current) {
-        postureTimerRef.current = setTimeout(() => setPostureAlertActive(true), 2000);
-      }
-    } else {
-      clearTimeout(postureTimerRef.current);
-      postureTimerRef.current = null;
-      setPostureAlertActive(false);
-    }
-  }, [badPosture]);
 
   if (!isAuthCheckComplete) {
     return (
