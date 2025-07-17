@@ -1331,17 +1331,26 @@ const FaceTouchDetector = () => {
 
   // Draw results on canvas (optimized for low CPU)
   const drawResults = () => {
-    if (!postureAlertActive) return; // Only draw guidance when alert active
     const canvas = canvasRef.current;
+    if (!canvas || !postureAlertActive) {
+      // Clear canvas if no alert is active
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
     const video = videoRef.current;
-    if (!canvas || !video) return;
+    if (!video) return;
+
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // helpers
+    // Scaling logic
     const videoAspect = video.videoWidth / video.videoHeight;
     const canvasAspect = canvas.width / canvas.height;
     let drawWidth, drawHeight, offsetX, offsetY;
@@ -1349,38 +1358,61 @@ const FaceTouchDetector = () => {
       drawWidth = canvas.width;
       drawHeight = canvas.width / videoAspect;
       offsetX = 0;
-      offsetY = (canvas.height - drawHeight)/2;
+      offsetY = (canvas.height - drawHeight) / 2;
     } else {
       drawHeight = canvas.height;
       drawWidth = canvas.height * videoAspect;
       offsetY = 0;
-      offsetX = (canvas.width - drawWidth)/2;
+      offsetX = (canvas.width - drawWidth) / 2;
     }
-    const toCanvas = (lm)=> ({x: offsetX + lm.x*drawWidth, y: offsetY + lm.y*drawHeight});
+    const toCanvas = (lm) => ({
+      x: offsetX + lm.x * drawWidth,
+      y: offsetY + lm.y * drawHeight,
+    });
 
-    // Determine if neck-extension is cause
-    const neckExt = faceSizeIncrease > detectionStateRef.current.faceSizeThreshold;
-    if (neckExt && window.currentFaceLandmarks) {
+    const isNeckExtended = faceSizeIncrease > detectionStateRef.current.faceSizeThreshold;
+
+    if (isNeckExtended && window.currentFaceLandmarks) {
+      // Draw neck extension guidance
       const nose = window.currentFaceLandmarks[1];
       if (nose) {
         const p = toCanvas(nose);
         const baseline = detectionStateRef.current.calibratedFaceSize || 50;
-        const scale = (baseline * Math.min(drawWidth/ video.videoWidth, drawHeight/ video.videoHeight))/2;
+        const scale = (baseline * Math.min(drawWidth / video.videoWidth, drawHeight / video.videoHeight)) / 2;
         const radiusGood = scale;
-        const radiusCurrent = radiusGood * (1+ faceSizeIncrease/100);
-        ctx.strokeStyle='#10b981';
-        ctx.lineWidth=3;
-        ctx.beginPath();ctx.arc(p.x,p.y,radiusGood,0,2*Math.PI);ctx.stroke();
-        ctx.strokeStyle='#ef4444';
-        ctx.beginPath();ctx.arc(p.x,p.y,radiusCurrent,0,2*Math.PI);ctx.stroke();
+        const radiusCurrent = radiusGood * (1 + faceSizeIncrease / 100);
+        ctx.strokeStyle = '#10b981'; // Green for good
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radiusGood, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.strokeStyle = '#ef4444'; // Red for current
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radiusCurrent, 0, 2 * Math.PI);
+        ctx.stroke();
       }
     } else if (detectionStateRef.current.calibratedLandmarks && window.currentPoseLandmarks) {
+      // Draw body posture guidance
       const baseline = detectionStateRef.current.calibratedLandmarks;
       const currentKeys = getKeyPoints(window.currentPoseLandmarks, video.videoWidth, video.videoHeight);
-      ctx.fillStyle='#10b981';
-      Object.values(baseline).forEach(pt=>{const p=toCanvas({x:pt.x/video.videoWidth,y:pt.y/video.videoHeight});ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.fill();});
-      ctx.fillStyle='#ef4444';
-      Object.values(currentKeys).forEach(pt=>{const p=toCanvas({x:pt.x/video.videoWidth,y:pt.y/video.videoHeight});ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.fill();});
+      
+      // Draw baseline points (green)
+      ctx.fillStyle = '#10b981';
+      Object.values(baseline).forEach(pt => {
+        const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+
+      // Draw current points (red)
+      ctx.fillStyle = '#ef4444';
+      Object.values(currentKeys).forEach(pt => {
+        const p = toCanvas({ x: pt.x / video.videoWidth, y: pt.y / video.videoHeight });
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, 2 * Math.PI);
+        ctx.fill();
+      });
     }
   };
 
@@ -1795,12 +1827,14 @@ const FaceTouchDetector = () => {
     
     if (!videoRef.current || !videoRef.current.srcObject) {
       console.log('No video stream, requesting camera...');
-        const success = await requestCamera();
-        if (!success) {
-          setDebugInfo('Camera permission failed');
-          return;
-        }
+      // Ensure audio is unlocked when the user grants camera permission
+      initAudio();
+      const success = await requestCamera();
+      if (!success) {
+        setDebugInfo('Camera permission failed');
+        return;
       }
+    }
 
     try {
       console.log('Starting detection...');
@@ -2338,7 +2372,7 @@ const FaceTouchDetector = () => {
                 <canvas
                   ref={canvasRef}
                   className="absolute top-0 left-0 w-full h-full face-touch-overlay"
-                  style={{
+                  style={{ 
                     display: 'block',
                     pointerEvents: 'none',
                     zIndex: 20,
