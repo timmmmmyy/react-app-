@@ -604,7 +604,7 @@ const FaceTouchDetector = () => {
       setShowUpgradeModal(true);
       return;
     }
-
+    
     // Use API to start trial
     startTrialAPI();
   };
@@ -1808,9 +1808,9 @@ const FaceTouchDetector = () => {
     }
     // Show trial button only if it has not started and not expired
     if (!trialStartTime && !isTrialExpired) {
-      return (
-        <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
-          Start Free Trial Now
+    return (
+      <button onClick={startTrial} className="bg-blue-500 text-white px-4 py-2 rounded">
+        Start Free Trial Now
         </button>
       );
     }
@@ -1830,6 +1830,9 @@ const FaceTouchDetector = () => {
   useEffect(() => {
     postureAlertActiveRef.current = postureAlertActive;
   }, [postureAlertActive]);
+
+  // Modal for confirming posture recalibration
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   if (!isAuthCheckComplete) {
     return (
@@ -2255,32 +2258,32 @@ const FaceTouchDetector = () => {
                     <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
                         <input type="checkbox" name="sound-enabled" id="sound-enabled" checked={soundEnabled} onChange={(e) => setSoundEnabled(e.target.checked)} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
                         <label htmlFor="sound-enabled" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer"></label>
-                    </div>
                   </div>
-                  <div>
+                    </div>
+                        <div>
                     <label htmlFor="face-alert-sound" className="block text-sm font-medium text-gray-300 mb-2">Face Touch Alert Sound</label>
-                    <select
+                      <select
                       id="face-alert-sound"
-                      value={faceAlertSound}
+                        value={faceAlertSound}
                       onChange={(e) => setFaceAlertSound(e.target.value)}
                       className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     >
-                      <option value="chime">Chime</option>
+                        <option value="chime">Chime</option>
                       {/* <option value="beep">Beep</option> */}
-                    </select>
-                  </div>
+                      </select>
+                    </div>
                   <div>
                     <label htmlFor="posture-alert-sound" className="block text-sm font-medium text-gray-300 mb-2">Posture Alert Sound</label>
-                    <select
+                      <select
                       id="posture-alert-sound"
-                      value={postureAlertSound}
+                        value={postureAlertSound}
                       onChange={(e) => setPostureAlertSound(e.target.value)}
                       className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                    >
-                      <option value="chime">Chime</option>
+                      >
+                        <option value="chime">Chime</option>
                       {/* <option value="beep">Beep</option> */}
-                    </select>
-                  </div>
+                      </select>
+                    </div>
                   <div className="flex items-center justify-between">
                     <label htmlFor="neck-extension-enabled" className="flex items-center cursor-pointer">
                       <span className="text-sm font-medium text-gray-300">Enable Neck Extension Detection</span>
@@ -2303,36 +2306,36 @@ const FaceTouchDetector = () => {
                         onChange={(e) => setFaceSizeThreshold(parseInt(e.target.value))}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                       />
-                    </div>
-                  )}
+                      </div>
+                    )}
                   <div>
                     <button onClick={handleForceRecalibrate} className="text-blue-400 hover:text-blue-300 text-sm">Force Recalibrate Posture</button>
                   </div>
                 </div>
               </div>
             )}
-            
+
           </div>
         </section>
       </main>
 
       {/* Modals */}
-      <AuthModal
-        isOpen={showAuthModal}
+        <AuthModal 
+          isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        mode={authMode}
-        onModeChange={setAuthMode}
-        onLogin={login}
-        onRegister={register}
-        emailVerificationSent={emailVerificationSent}
-        setEmailVerificationSent={setEmailVerificationSent}
-      />
-      <UpgradeModal
+          mode={authMode}
+          onModeChange={setAuthMode}
+          onLogin={login}
+          onRegister={register}
+          emailVerificationSent={emailVerificationSent}
+          setEmailVerificationSent={setEmailVerificationSent}
+        />
+      <UpgradeModal 
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onUpgrade={() => {
           setShowUpgradeModal(false);
-          window.location.href = '/pricing';
+                    window.location.href = '/pricing';
         }}
       />
       <ConfirmModal
