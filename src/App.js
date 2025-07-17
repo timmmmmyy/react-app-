@@ -1116,7 +1116,7 @@ const FaceTouchDetector = () => {
   // Draw results on canvas (optimized for low CPU)
   const drawResults = () => {
     const canvas = canvasRef.current;
-    if (!canvas || !postureAlertActive) { // Visualization only for posture
+    if (!canvas || !postureAlertActiveRef.current) { // Visualization only for posture alerts (use ref for freshest value)
       if (canvas) {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1159,7 +1159,7 @@ const FaceTouchDetector = () => {
     const isNeckExtended = faceSizeIncrease > detectionStateRef.current.faceSizeThreshold;
 
     // GUIDANCE VISUALIZATION LOGIC
-    if (postureAlertActive) {
+    if (postureAlertActiveRef.current) {
       // Case 1: Neck Extension Alert
       if (isNeckExtended && window.currentFaceLandmarks && detectionStateRef.current.isFaceSizeCalibrated) {
         const nose = window.currentFaceLandmarks[1];
@@ -1789,6 +1789,11 @@ const FaceTouchDetector = () => {
 
   const [faceAlertActive, setFaceAlertActive] = useState(false);
   const [postureAlertActive, setPostureAlertActive] = useState(false);
+  // Keep latest posture alert state available inside MediaPipe callbacks
+  const postureAlertActiveRef = useRef(false);
+  useEffect(() => {
+    postureAlertActiveRef.current = postureAlertActive;
+  }, [postureAlertActive]);
 
   if (!isAuthCheckComplete) {
     return (
