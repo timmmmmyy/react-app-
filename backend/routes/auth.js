@@ -137,11 +137,11 @@ router.get('/confirm-email', async (req, res) => {
     
     if (!confirmed) {
       console.log(`[CONFIRM-EMAIL] Failed to confirm user`);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid or expired verification link.',
-        message: 'This link may have already been used or a newer one has been issued. Please try logging in or registering again to get a new link.'
-      });
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid or expired verification link.',
+            message: 'This link may have already been used or a newer one has been issued. Please try logging in or registering again to get a new link.'
+        });
     }
 
     console.log(`[CONFIRM-EMAIL] User confirmed successfully`);

@@ -43,13 +43,13 @@ const VerifyEmailPage = () => {
         
         console.log('Verification response data:', data);
 
-        setVerificationStatus('success');
-        setMessage(data.message || 'Email verified successfully!');
-        
-        // Redirect to login page after 5 seconds
-        setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 5000);
+          setVerificationStatus('success');
+          setMessage(data.message || 'Email verified successfully!');
+          
+          // Redirect to login page after 5 seconds
+          setTimeout(() => {
+            navigate('/login', { replace: true });
+          }, 5000);
         
       } catch (error) {
         console.error('Verification error:', error);
@@ -59,7 +59,7 @@ const VerifyEmailPage = () => {
           setVerificationStatus('already-verified');
           setMessage('Your email has already been verified. You can proceed to login.');
         } else {
-          setVerificationStatus('error');
+        setVerificationStatus('error');
           setMessage(error.message || 'Email verification failed. Please try again or contact support.');
         }
       } finally {
