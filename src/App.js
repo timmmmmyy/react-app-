@@ -8,6 +8,9 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import SubscriptionStatus from './components/SubscriptionStatus';
 import stripeService from './services/stripeService';
 import apiService from './services/apiService';
+
+console.log('REACT_APP_API_URL from env:', process.env.REACT_APP_API_URL);
+
 // Removed Firebase imports - using custom backend authentication
 
 // Authentication Modal Component
