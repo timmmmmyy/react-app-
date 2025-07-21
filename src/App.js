@@ -2375,9 +2375,8 @@ const FaceTouchDetector = () => {
                 <li><strong>Keep the Window Active</strong> – Browsers pause video processing when tabs are hidden. Open Ascends in a <u>separate window</u>, then drag that window slightly <u>off the edge of your monitor</u>. This trick keeps the tab "visible" so the camera continues streaming while you work in other apps.</li>
                 <li><strong>Respond to Alerts</strong> – If you slouch or touch your face you'll hear an alert and see on-screen feedback. Adjust until the alerts stop.</li>
                 <li><strong>Tweak Settings</strong> – Use the <em>Settings</em> panel to customise sensitivity, sounds, and alert behaviour.</li>
-                <li><strong>Review Analytics</strong> – Session statistics update in real time so you can track progress.</li>
               </ol>
-              <p className="text-sm text-gray-400">Need more help? Reach out via the support link in the footer.</p>
+              <p className="text-sm text-gray-400">Need more help? Contact us at <a href="mailto:ascendsdevt@gmail.com" className="underline text-blue-400">ascendsdevt@gmail.com</a></p>
             </div>
           </div>
         </div>
