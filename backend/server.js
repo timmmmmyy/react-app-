@@ -444,26 +444,29 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     
     let event;
     try {
-        // In development mode, allow bypassing signature verification for testing
-        if (process.env.NODE_ENV === 'development' && (!sig || sig === 'test_signature' || sig.includes('test'))) {
-            console.log('🔧 Development mode: Bypassing webhook signature verification');
-            event = JSON.parse(req.body.toString());
+        if (process.env.NODE_ENV === 'development') {
+            // Development mode: bypass signature verification entirely
+            if (!sig || sig === 'test_signature' || sig.includes('test')) {
+                console.log('🔧 Development mode: Bypassing webhook signature verification');
+                // If body is Buffer, parse JSON, else assume it's already an object
+                if (Buffer.isBuffer(req.body)) {
+                    event = JSON.parse(req.body.toString());
+                } else if (typeof req.body === 'object') {
+                    event = req.body;
+                } else {
+                    event = JSON.parse(req.body);
+                }
+            } else {
+                // Use Stripe verification when a real signature is provided in dev mode
+                event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+            }
         } else {
+            // Production mode - always verify signature
             event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
         }
     } catch (err) {
-        console.error('Webhook signature verification failed:', err.message);
-        // In development, still try to parse the body for testing
-        if (process.env.NODE_ENV === 'development') {
-            console.log('🔧 Development mode: Attempting to parse webhook body anyway');
-            try {
-                event = JSON.parse(req.body.toString());
-            } catch (parseErr) {
-                return res.status(400).send(`Webhook Error: ${err.message}`);
-            }
-        } else {
-            return res.status(400).send(`Webhook Error: ${err.message}`);
-        }
+        console.error('Webhook processing error:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
     }
     
     // Handle the event
@@ -569,18 +572,25 @@ app.get('/api/admin/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// Start Free Trial endpoint
+// Start Free Trial endpoint (legacy - kept for compatibility)
 app.post('/api/auth/start-trial', authenticateToken, async (req, res) => {
     try {
         const user = await db.findUserByEmail(req.user.email);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+
         if (user.trial_start_time) {
             return res.status(400).json({ error: 'Trial has already been started' });
         }
-        const now = Date.now(); // milliseconds since epoch
-        await db.startTrial(user.email, now);
+
+        if (user.is_premium || user.has_lifetime_access) {
+            return res.status(400).json({ error: 'User already has lifetime access' });
+        }
+
+        const now = Date.now();
+        await db.updateUserTrialStart(user.id, now);
+
         res.json({ success: true, trial_start_time: now });
     } catch (error) {
         console.error('Start trial error:', error);
