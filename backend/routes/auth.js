@@ -1,16 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database'); // Use a single db object
-const { 
-  createUser, 
-  findUserByEmail, 
-  verifyPassword,
-  updateUserTrialStart,
-  updateUserLifetimeAccess,
-  updateUserEmailVerificationToken,
-  // Removed verifyUserEmail as it's not directly exported like this
-  findAllUnverifiedUsers
-} = db;
 const { generateToken, authenticateToken } = require('../middleware/auth');
 const { emailService } = require('../server'); // Import the shared email service
 const crypto = require('crypto');
@@ -49,12 +39,12 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await findUserByEmail(email);
+    const existingUser = await db.findUserByEmail(email);
     if (existingUser) {
       if (!existingUser.is_confirmed) {
         // User exists but is not confirmed, regenerate token and resend email
         const newVerificationToken = generateVerificationToken();
-        await updateUserEmailVerificationToken(existingUser.id, newVerificationToken, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+        await db.updateUserEmailVerificationToken(existingUser.id, newVerificationToken, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
         await emailService.sendConfirmationEmail(email, newVerificationToken);
         return res.status(200).json({
           success: true,
@@ -79,7 +69,7 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     
     // Create user with token and expiry
-    const user = await createUser(email, passwordHash, verificationToken);
+    const user = await db.createUser(email, passwordHash, verificationToken);
     
     // Send verification email
     await emailService.sendConfirmationEmail(email, verificationToken);
@@ -194,7 +184,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user
-    const user = await findUserByEmail(email);
+    const user = await db.findUserByEmail(email);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -211,7 +201,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Verify password
-    const isValidPassword = await verifyPassword(password, user.password_hash);
+    const isValidPassword = await db.verifyPassword(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
@@ -247,7 +237,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
     // Refetch user from DB to get the latest info
-    const user = await findUserByEmail(req.user.email);
+    const user = await db.findUserByEmail(req.user.email);
     
     if (!user) {
         return res.status(404).json({ success: false, error: 'User not found' });
@@ -278,7 +268,7 @@ router.post('/start-trial', authenticateToken, async (req, res) => {
     const userEmail = req.user.email;
     
     // Check if user already started trial
-    const freshUser = await findUserByEmail(userEmail);
+    const freshUser = await db.findUserByEmail(userEmail);
     if (freshUser.trial_start_time) {
       return res.status(400).json({
         success: false,
@@ -286,8 +276,8 @@ router.post('/start-trial', authenticateToken, async (req, res) => {
       });
     }
 
-    // Check if user has lifetime access
-    if (freshUser.has_lifetime_access) {
+    // Check if user has lifetime access (is_premium maps to has_lifetime_access)
+    if (freshUser.is_premium || freshUser.has_lifetime_access) {
       return res.status(400).json({
         success: false,
         error: 'You already have lifetime access'
@@ -295,7 +285,8 @@ router.post('/start-trial', authenticateToken, async (req, res) => {
     }
 
     const trialStartTime = Date.now();
-    await updateUserTrialStart(userId, trialStartTime);
+    // Use the database function that accepts userId
+    await db.updateUserTrialStart(userId, trialStartTime);
 
     res.json({
       success: true,
@@ -325,7 +316,7 @@ router.post('/logout', (req, res) => {
 if (process.env.NODE_ENV === 'development') {
   router.get('/dev/tokens', async (req, res) => {
     try {
-      const users = await findAllUnverifiedUsers();
+      const users = await db.findAllUnverifiedUsers();
       res.json({
         success: true,
         message: 'Recent verification tokens (development only)',
@@ -348,7 +339,7 @@ if (process.env.NODE_ENV === 'development') {
   // Development-only route to auto-verify the most recent user
   router.post('/dev/auto-verify', async (req, res) => {
     try {
-      const users = await findAllUnverifiedUsers();
+      const users = await db.findAllUnverifiedUsers();
       if (users.length === 0) {
         return res.json({
           success: false,
@@ -367,7 +358,7 @@ if (process.env.NODE_ENV === 'development') {
       }
 
       // Retrieve the user again to get the updated status
-      const verifiedUser = await findUserByEmail(latestUser.email); // Retrieve by email as token is now null
+      const verifiedUser = await db.findUserByEmail(latestUser.email); // Retrieve by email as token is now null
       
       // Generate login token for the verified user
       const loginToken = generateToken(verifiedUser.id);

@@ -444,14 +444,87 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     
     let event;
     try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        // In development mode, allow bypassing signature verification for testing
+        if (process.env.NODE_ENV === 'development' && (!sig || sig === 'test_signature' || sig.includes('test'))) {
+            console.log('🔧 Development mode: Bypassing webhook signature verification');
+            event = JSON.parse(req.body.toString());
+        } else {
+            event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        }
     } catch (err) {
         console.error('Webhook signature verification failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
+        // In development, still try to parse the body for testing
+        if (process.env.NODE_ENV === 'development') {
+            console.log('🔧 Development mode: Attempting to parse webhook body anyway');
+            try {
+                event = JSON.parse(req.body.toString());
+            } catch (parseErr) {
+                return res.status(400).send(`Webhook Error: ${err.message}`);
+            }
+        } else {
+            return res.status(400).send(`Webhook Error: ${err.message}`);
+        }
     }
     
     // Handle the event
     switch (event.type) {
+        case 'checkout.session.completed':
+            const session = event.data.object;
+            console.log('🎉 Checkout session completed:', session.id);
+            
+            try {
+                // Get customer email from session
+                const customerEmail = session.customer_details?.email || session.customer_email;
+                const customerId = session.customer;
+                const paymentIntentId = session.payment_intent;
+                
+                if (!customerEmail) {
+                    console.error('No customer email found in session');
+                    break;
+                }
+                
+                console.log(`Upgrading user to premium: ${customerEmail}`);
+                
+                // Find user by email and upgrade to premium
+                const user = await db.findUserByEmail(customerEmail);
+                if (user) {
+                    // Use the new updateUserLifetimeAccess function with userId
+                    await db.updateUserLifetimeAccess(user.id, true);
+                    
+                    // Also update stripe customer ID if not set
+                    if (customerId && !user.stripe_customer_id) {
+                        await db.updateUserStripeCustomerId(user.id, customerId);
+                    }
+                    
+                    // Create purchase record
+                    if (session.amount_total) {
+                        await db.createPurchase(
+                            user.id, 
+                            paymentIntentId || session.id, 
+                            customerId, 
+                            session.amount_total, 
+                            session.currency || 'usd', 
+                            'completed'
+                        );
+                    }
+                    
+                    // Send confirmation email
+                    try {
+                        await emailService.sendPremiumConfirmationEmail(customerEmail);
+                        console.log('✅ Premium confirmation email sent to:', customerEmail);
+                    } catch (emailError) {
+                        console.error('❌ Failed to send confirmation email:', emailError);
+                    }
+                    
+                    console.log('✅ User successfully upgraded to premium:', customerEmail);
+                } else {
+                    console.error('❌ User not found for email:', customerEmail);
+                }
+            } catch (error) {
+                console.error('❌ Error processing checkout session:', error);
+            }
+            break;
+            
         case 'payment_intent.succeeded':
             const paymentIntent = event.data.object;
             
@@ -463,7 +536,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 await db.upgradeToPremium(email, customerId, paymentIntent.id);
                 await emailService.sendPremiumConfirmationEmail(email);
                 console.log('User upgraded to premium:', email);
-  } catch (error) {
+            } catch (error) {
                 console.error('Error upgrading user to premium:', error);
             }
             break;
