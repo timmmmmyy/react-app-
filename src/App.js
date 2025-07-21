@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { Camera, AlertTriangle, Settings, Play, Pause, Volume2, VolumeX, Crown, Mail, Check, LogOut, User } from 'lucide-react';
+import { Camera, AlertTriangle, Settings, Play, Pause, Volume2, VolumeX, Crown, Mail, Check, LogOut, User, HelpCircle } from 'lucide-react';
 import './App.css';
 import PricingPage from './pages/PricingPage';
 import SuccessPage from './pages/SuccessPage';
@@ -388,6 +388,7 @@ const FaceTouchDetector = () => {
   // New: Hold times - REDUCED for faster response
   const [faceTouchHoldTime, setFaceTouchHoldTime] = useState(2); // seconds - set to 2 for viz
   const [postureHoldTime, setPostureHoldTime] = useState(2); // seconds - set to 2 for viz
+  const [showGuide, setShowGuide] = useState(false);
 
   // Detection data
   const [faceDetected, setFaceDetected] = useState(false);
@@ -2143,6 +2144,14 @@ const FaceTouchDetector = () => {
                   <Settings className="w-5 h-5" />
                   Settings
                 </button>
+
+                <button
+                  onClick={() => setShowGuide(true)}
+                  className="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                  How&nbsp;to&nbsp;Use
+                </button>
               </div>
 
             </div>
@@ -2348,6 +2357,31 @@ const FaceTouchDetector = () => {
         title="Confirm Recalibration"
         message="Are you sure you want to reset your posture calibration? This will clear your current settings."
       />
+      {/* How To Use Modal */}
+      {showGuide && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowGuide(false)}>
+          <div className="bg-gray-900 text-white max-w-2xl w-full mx-4 rounded-2xl p-8 relative" onClick={e => e.stopPropagation()}>
+            <button className="absolute top-4 right-4 text-gray-400 hover:text-white" onClick={() => setShowGuide(false)}>
+              ✕
+            </button>
+            <h2 className="text-3xl font-bold mb-4 flex items-center gap-2"><HelpCircle className="w-6 h-6" /> How to Use Ascends</h2>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <p>Follow this step-by-step guide to get the most accurate posture &amp; face-touch detection:</p>
+              <ol className="list-decimal list-inside space-y-3 text-gray-300">
+                <li><strong>Give Camera Permission</strong> – When prompted, allow your browser to access the webcam.</li>
+                <li><strong>Position the Camera</strong> – Your face and upper torso should be clearly visible. Good lighting helps accuracy.</li>
+                <li><strong>Calibrate Good Posture</strong> – Sit up straight and click <em>Set Good Posture</em>. Ascends will use this as your baseline.</li>
+                <li><strong>Start Detection / Trial</strong> – Click <em>Begin Analysis</em> (or start the free trial) to enable real-time monitoring.</li>
+                <li><strong>Keep the Window Active</strong> – Browsers pause video processing when tabs are hidden. Open Ascends in a <u>separate window</u>, then drag that window slightly <u>off the edge of your monitor</u>. This trick keeps the tab "visible" so the camera continues streaming while you work in other apps.</li>
+                <li><strong>Respond to Alerts</strong> – If you slouch or touch your face you'll hear an alert and see on-screen feedback. Adjust until the alerts stop.</li>
+                <li><strong>Tweak Settings</strong> – Use the <em>Settings</em> panel to customise sensitivity, sounds, and alert behaviour.</li>
+                <li><strong>Review Analytics</strong> – Session statistics update in real time so you can track progress.</li>
+              </ol>
+              <p className="text-sm text-gray-400">Need more help? Reach out via the support link in the footer.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
