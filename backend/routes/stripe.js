@@ -200,7 +200,49 @@ router.get('/session/:sessionId', async (req, res) => {
     });
     
     const plan = getPlanByPriceId(session.line_items?.data[0]?.price?.id);
-    
+
+    // If payment is complete (paid) and this is a lifetime purchase, upgrade the user's account in DB
+    try {
+      if (session.payment_status === 'paid' && session.metadata?.plan_type === 'lifetime') {
+        const customerEmail = session.customer_details?.email || session.customer_email;
+        const customerId = session.customer;
+
+        if (customerEmail) {
+          const db = require('../utils/database');
+          const { emailService } = require('../server');
+
+          const user = await db.findUserByEmail(customerEmail);
+          if (user && !user.has_lifetime_access && !user.is_premium) {
+            await db.updateUserLifetimeAccess(user.id, true);
+
+            if (customerId && !user.stripe_customer_id) {
+              await db.updateUserStripeCustomerId(user.id, customerId);
+            }
+
+            // Record purchase for audit purposes
+            await db.createPurchase(
+              user.id,
+              session.payment_intent || session.id,
+              customerId,
+              session.amount_total,
+              session.currency || 'usd',
+              'completed'
+            );
+
+            // Fire confirmation email (best-effort)
+            try {
+              await emailService.sendPremiumConfirmationEmail(customerEmail);
+              console.log('✅ Premium confirmation email sent via session endpoint');
+            } catch (err) {
+              console.error('❌ Failed to send premium email via session endpoint:', err.message);
+            }
+          }
+        }
+      }
+    } catch (upgradeErr) {
+      console.error('⚠️  Error trying to auto-upgrade user in session endpoint:', upgradeErr.message);
+    }
+
     res.json({
       success: true,
       session: {
