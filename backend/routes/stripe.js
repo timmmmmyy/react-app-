@@ -113,6 +113,19 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
 
     // Handle trial plan (free)
     if (selectedPlan.price === 0 || planId === 'trial') {
+      const db = require('../utils/database');
+      // Prevent users from starting multiple trials
+      const existingUser = await db.findUserById(req.user.id);
+      if (existingUser && existingUser.trial_start_time) {
+        return res.status(400).json({
+          success: false,
+          error: 'Free trial has already been used.'
+        });
+      }
+
+      // Record trial start time
+      await db.updateUserTrialStart(req.user.id, Date.now());
+
       return res.json({
         success: true,
         sessionId: null,

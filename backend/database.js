@@ -74,6 +74,28 @@ async function initializeDatabase() {
             });
         }
     });
+
+    const createPurchasesTable = `
+        CREATE TABLE IF NOT EXISTS purchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            stripe_payment_intent_id TEXT NOT NULL,
+            stripe_customer_id TEXT,
+            amount INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    `;
+
+    db.run(createPurchasesTable, (err) => {
+        if (err) {
+            console.error('Error creating purchases table:', err.message);
+        } else {
+            console.log('Purchases table ready.');
+        }
+    });
 }
 
 initializeDatabase();
@@ -118,7 +140,8 @@ const dbOperations = {
                     created_at,
                     confirmed_at,
                     premium_purchased_at,
-                    trial_start_time
+                    trial_start_time,
+                    CASE WHEN is_premium = 1 THEN 1 ELSE 0 END as has_lifetime_access
                 FROM users 
                 WHERE email = ?
             `;
@@ -143,6 +166,9 @@ const dbOperations = {
             db.get(sql, [id], (err, row) => {
                 if (err) {
                     return reject(err);
+                }
+                if (row) {
+                    row.has_lifetime_access = row.is_premium === 1 || row.is_premium === "1";
                 }
                 resolve(row);
             });
@@ -265,65 +291,32 @@ const dbOperations = {
         });
     },
 
-    async startTrial(email, trialStartTime) {
-        await connectToDatabase();
-        return new Promise((resolve, reject) => {
-            const sql = `UPDATE users SET trial_start_time = ? WHERE email = ?`;
-            db.run(sql, [trialStartTime, email], function(err) {
-                if (err) return reject(err);
-                resolve(this.changes > 0);
-            });
-        });
-    },
-
-    async grantPremiumAccess(email) {
-        await connectToDatabase();
-        return new Promise((resolve, reject) => {
-            const sql = `UPDATE users SET is_premium = 1, premium_purchased_at = CURRENT_TIMESTAMP WHERE email = ?`;
-            db.run(sql, [email], function(err) {
-                if (err) {
-                    console.error('Error granting premium access:', err);
-                    return reject(err);
-                }
-                resolve(this.changes > 0);
-            });
-        });
-    },
-
-    async updateUserEmailVerificationToken(userId, newToken, expiresAt) {
-        await connectToDatabase();
-        return new Promise((resolve, reject) => {
-            const sql = `UPDATE users SET confirmation_token = ?, email_verification_expires_at = ? WHERE id = ?`;
-            db.run(sql, [newToken, expiresAt, userId], function(err) {
-                if (err) {
-                    return reject(err);
-                }
-                resolve(this.changes > 0);
-            });
-        });
-    },
-
     async verifyPassword(password, hash) {
         const bcrypt = require('bcryptjs');
         return bcrypt.compare(password, hash);
     },
 
-    async updateUserTrialStart(email, trialStartTime) {
+    // Wrapper for backward compatibility (expects userId)
+    async updateUserTrialStart(userId, trialStartTime) {
+        return this.updateUserTrialStartById(userId, trialStartTime);
+    },
+
+    async updateUserTrialStartById(userId, trialStartTime) {
         await connectToDatabase();
         return new Promise((resolve, reject) => {
-            const sql = `UPDATE users SET trial_start_time = ? WHERE email = ?`;
-            db.run(sql, [trialStartTime, email], function(err) {
+            const sql = `UPDATE users SET trial_start_time = ? WHERE id = ?`;
+            db.run(sql, [trialStartTime, userId], function(err) {
                 if (err) return reject(err);
                 resolve(this.changes > 0);
             });
         });
     },
 
-    async updateUserLifetimeAccess(email) {
+    async updateUserLifetimeAccess(userId, hasLifetimeAccess) {
         await connectToDatabase();
         return new Promise((resolve, reject) => {
-            const sql = `UPDATE users SET is_premium = 1, premium_purchased_at = CURRENT_TIMESTAMP WHERE email = ?`;
-            db.run(sql, [email], function(err) {
+            const sql = `UPDATE users SET is_premium = ?, premium_purchased_at = CURRENT_TIMESTAMP WHERE id = ?`;
+            db.run(sql, [hasLifetimeAccess ? 1 : 0, userId], function(err) {
                 if (err) return reject(err);
                 resolve(this.changes > 0);
             });
@@ -339,7 +332,51 @@ const dbOperations = {
                 resolve(rows);
             });
         });
+    },
+
+    async createPurchase(userId, stripePaymentIntentId, stripeCustomerId, amount, currency, status) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `INSERT INTO purchases (user_id, stripe_payment_intent_id, stripe_customer_id, amount, currency, status) VALUES (?, ?, ?, ?, ?, ?)`;
+            db.run(sql, [userId, stripePaymentIntentId, stripeCustomerId, amount, currency, status], function(err) {
+                if (err) return reject(err);
+                resolve(this.lastID);
+            });
+        });
+    },
+
+    async getUserPurchases(userId) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT * FROM purchases WHERE user_id = ?`;
+            db.all(sql, [userId], (err, rows) => {
+                if (err) return reject(err);
+                resolve(rows);
+            });
+        });
+    },
+
+    async getUserLifetimeAccessStatus(email) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT is_premium as has_lifetime_access FROM users WHERE email = ?`;
+            db.get(sql, [email], (err, row) => {
+                if (err) return reject(err);
+                resolve(row);
+            });
+        });
+    },
+
+    async updateUserStripeCustomerId(userId, stripeCustomerId) {
+        await connectToDatabase();
+        return new Promise((resolve, reject) => {
+            const sql = `UPDATE users SET stripe_customer_id = ? WHERE id = ?`;
+            db.run(sql, [stripeCustomerId, userId], function(err) {
+                if (err) return reject(err);
+                resolve(this.changes > 0);
+            });
+        });
     }
 };
 
-module.exports = dbOperations; 
+module.exports = dbOperations;
